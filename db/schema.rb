@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_08_28_032047) do
+ActiveRecord::Schema[7.1].define(version: 2024_08_28_175531) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -22,9 +22,14 @@ ActiveRecord::Schema[7.1].define(version: 2024_08_28_032047) do
     t.index ["user_id"], name: "index_budgets_on_user_id"
   end
 
+  create_table "categories", force: :cascade do |t|
+    t.string "name"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
   create_table "entries", force: :cascade do |t|
     t.bigint "budget_id", null: false
-    t.string "entry_type"
     t.date "date"
     t.decimal "amount"
     t.text "description"
@@ -32,7 +37,9 @@ ActiveRecord::Schema[7.1].define(version: 2024_08_28_032047) do
     t.text "custom_frequency_days"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "category_id"
     t.index ["budget_id"], name: "index_entries_on_budget_id"
+    t.index ["category_id"], name: "index_entries_on_category_id"
   end
 
   create_table "entries_tags", id: false, force: :cascade do |t|
@@ -46,10 +53,10 @@ ActiveRecord::Schema[7.1].define(version: 2024_08_28_032047) do
     t.string "name"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.string "tag_type"
     t.integer "user_id"
     t.boolean "default_tag", default: false
-    t.index ["tag_type"], name: "index_tags_on_tag_type"
+    t.bigint "category_id"
+    t.index ["category_id"], name: "index_tags_on_category_id"
     t.index ["user_id"], name: "index_tags_on_user_id"
   end
 
@@ -65,4 +72,6 @@ ActiveRecord::Schema[7.1].define(version: 2024_08_28_032047) do
 
   add_foreign_key "budgets", "users"
   add_foreign_key "entries", "budgets"
+  add_foreign_key "entries", "categories"
+  add_foreign_key "tags", "categories"
 end
