@@ -18,8 +18,9 @@ categories = [
   { name: 'Budgeting Strategy' },
 ]
 
+# Ensure each category has a category_type of 'default'
 categories.each do |category_attributes|
-  Category.find_or_create_by(category_attributes)
+  Category.find_or_create_by!(category_attributes.merge(category_type: 'default'))
 end
 
 # Define default tags with their types
