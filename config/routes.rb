@@ -1,11 +1,23 @@
 Rails.application.routes.draw do
   namespace :api do
     namespace :v1 do
-      resources :entries
+      resources :entries do
+        collection do
+          get "entries_by_budget_with_default_categories"
+        end
+      end
       resources :tags
       resources :budgets
-      resources :users
-      resources :categories
+      resources :users do
+        collection do
+          get 'show_by_email'
+        end
+      end
+      resources :categories do
+        collection do
+          get 'default'
+        end
+      end
     end
   end
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
