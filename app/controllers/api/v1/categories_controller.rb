@@ -13,6 +13,12 @@ class Api::V1::CategoriesController < ApplicationController
     render json: @category
   end
 
+  def default
+    # Fetch categories where identifier is 'default'
+    default_categories = Category.where(identifier: 'default').pluck(:name) # Adjust the column names as needed
+    render json: default_categories
+  end
+
   # POST /categories
   def create
     @category = Category.new(category_params)
