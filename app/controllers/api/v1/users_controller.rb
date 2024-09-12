@@ -13,14 +13,31 @@ class Api::V1::UsersController < ApplicationController
     render json: @user
   end
 
+  # GET /users/by_email
+  def show_by_email
+    @user = User.find_by(email: params[:email])
+    
+    if @user
+      render json: @user
+    else
+      render json: { error: 'User not found' }, status: :not_found
+    end
+  end
+  
   # POST /users
   def create
-    @user = User.new(user_params)
+    @user = User.find_by(email: user_params[:email])
 
-    if @user.save
-      render json: @user, status: :created, location: @user
+    if @user
+      render json: { error: 'User with this email already exists' }, status: :unprocessable_entity
     else
-      render json: @user.errors, status: :unprocessable_entity
+      @user = User.new(user_params)
+
+      if @user.save
+        render json: @user, status: :created, location: @user
+      else
+        render json: @user.errors, status: :unprocessable_entity
+      end
     end
   end
 
@@ -46,6 +63,6 @@ class Api::V1::UsersController < ApplicationController
 
     # Only allow a list of trusted parameters through.
     def user_params
-      params.require(:user).permit(:first_name, :last_name, :email, :mobile_number, :password_digest)
+      params.require(:user).permit(:first_name, :last_name, :email)
     end
 end

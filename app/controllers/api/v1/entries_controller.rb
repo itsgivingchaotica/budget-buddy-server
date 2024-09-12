@@ -13,6 +13,28 @@ class Api::V1::EntriesController < ApplicationController
     render json: @entry
   end
 
+  # GET /entries/entries_by_budget_with_default_categories
+  def entries_by_budget_with_default_categories
+    # Fetch budget ID from parameters
+    budget_id = params[:budget_id]
+    
+    # Fetch default category IDs
+    default_category_ids = Category.where(identifier: 'default').pluck(:id)
+    
+    # Fetch entries with these category IDs and for the specific budget
+    entries = Entry.where(category_id: default_category_ids, budget_id: budget_id).includes(:category)
+    
+    # Combine entries with category details if needed
+    entries_with_category = entries.map do |entry|
+      {
+        entry: entry.attributes,
+        category: entry.category.present? ? entry.category.attributes : {} # Adjust to handle case where category might be nil
+      }
+    end
+    
+    render json: entries_with_category
+  end
+
   # POST /entries
   def create
     @entry = Entry.new(entry_params)
