@@ -1,15 +1,18 @@
 class Api::V1::TagsController < ApplicationController
-  before_action :set_tag, only: %i[ show update destroy ]
-
   # GET /tags
   def index
     @tags = Tag.all
-
     render json: @tags
+  end
+
+  def default_tags
+    @default_tags = Tag.where(default_tag: true, user_id: 1)
+    render json: @default_tags
   end
 
   # GET /tags/1
   def show
+    @tag = Tag.find(params[:id])
     render json: @tag
   end
 
@@ -26,6 +29,8 @@ class Api::V1::TagsController < ApplicationController
 
   # PATCH/PUT /tags/1
   def update
+    @tag = Tag.find(params[:id])
+
     if @tag.update(tag_params)
       render json: @tag
     else
@@ -35,17 +40,14 @@ class Api::V1::TagsController < ApplicationController
 
   # DELETE /tags/1
   def destroy
+    @tag = Tag.find(params[:id])
     @tag.destroy!
   end
 
   private
-    # Use callbacks to share common setup or constraints between actions.
-    def set_tag
-      @tag = Tag.find(params[:id])
-    end
 
-    # Only allow a list of trusted parameters through.
-    def tag_params
-      params.require(:tag).permit(:name)
-    end
+  # Only allow a list of trusted parameters through.
+  def tag_params
+    params.require(:tag).permit(:name)
+  end
 end
