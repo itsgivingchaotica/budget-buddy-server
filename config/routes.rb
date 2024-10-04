@@ -6,7 +6,11 @@ Rails.application.routes.draw do
           get "entries_by_budget_with_default_categories"
         end
       end
-      resources :tags
+      resources :tags do
+        collection do
+          get 'default_tags'
+        end
+      end
       resources :budgets
       resources :users do
         collection do
