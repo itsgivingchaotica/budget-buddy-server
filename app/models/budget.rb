@@ -3,7 +3,7 @@ class Budget < ApplicationRecord
   has_many :entries, dependent: :destroy
   has_many :tags, through: :entries
 
-  after_create :associate_default_tags
+  # after_create :associate_default_tags
 
   private
 
