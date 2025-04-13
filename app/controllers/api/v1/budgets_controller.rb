@@ -18,7 +18,7 @@ class Api::V1::BudgetsController < ApplicationController
     @budget = Budget.new(budget_params)
 
     if @budget.save
-      render json: @budget, status: :created, location: @budget
+      render json: @budget, status: :created
     else
       render json: @budget.errors, status: :unprocessable_entity
     end
