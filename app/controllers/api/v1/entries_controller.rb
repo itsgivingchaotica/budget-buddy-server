@@ -40,7 +40,11 @@ class Api::V1::EntriesController < ApplicationController
     @entry = Entry.new(entry_params)
 
     if @entry.save
-      render json: @entry, status: :created, location: @entry
+      params[:entry][:tag_ids].each do |tag_id|
+        tag = Tag.find(tag_id)
+        @entry.tags << tag unless @entry.tags.include?(tag)
+        end
+      render json: @entry, status: :created
     else
       render json: @entry.errors, status: :unprocessable_entity
     end
@@ -68,6 +72,17 @@ class Api::V1::EntriesController < ApplicationController
 
     # Only allow a list of trusted parameters through.
     def entry_params
-      params.require(:entry).permit(:budget_id, :entry_type, :date, :amount, :description, :frequency, :custom_frequency_days)
+      params.require(:entry).permit(:budget_id, :start_date, :amount, :description, :frequency, :custom_frequency_days, :category_id, :frequency_number, :end_date, :tag_ids)
     end
+
+    #  budget_id: budget.id,
+    #   start_date: entryData.start_date,
+    #   amount: entryData.amount,
+    #   description: entryData.description,
+    #   frequency: entryData.frequency,
+    #   custom_frequency_days: entryData.custom_frequency_days,
+    #   category_id: CategoryIdMap[selectedCategory],
+    #   frequency_number: entryData.frequency_number,
+    #   end_date: entryData.end_date,
+    #   tag_ids: tagId, // matching join table for entries_tags
 end
