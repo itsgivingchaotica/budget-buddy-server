@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_09_07_152907) do
+ActiveRecord::Schema[7.1].define(version: 2025_04_19_232612) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -48,8 +48,12 @@ ActiveRecord::Schema[7.1].define(version: 2024_09_07_152907) do
   create_table "entries_tags", id: false, force: :cascade do |t|
     t.bigint "entry_id", null: false
     t.bigint "tag_id", null: false
+    t.bigint "user_id"
+    t.bigint "budget_id"
+    t.index ["budget_id"], name: "index_entries_tags_on_budget_id"
     t.index ["entry_id"], name: "index_entries_tags_on_entry_id"
     t.index ["tag_id"], name: "index_entries_tags_on_tag_id"
+    t.index ["user_id"], name: "index_entries_tags_on_user_id"
   end
 
   create_table "tags", force: :cascade do |t|
@@ -75,5 +79,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_09_07_152907) do
   add_foreign_key "budgets", "users"
   add_foreign_key "entries", "budgets"
   add_foreign_key "entries", "categories"
+  add_foreign_key "entries_tags", "budgets"
+  add_foreign_key "entries_tags", "users"
   add_foreign_key "tags", "categories"
 end
