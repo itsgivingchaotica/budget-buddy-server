@@ -12,28 +12,32 @@ class Api::V1::EntriesController < ApplicationController
   def show
     render json: @entry
   end
+# GET /entries/entries_by_budget_with_default_categories
+def entries_by_budget_with_default_categories
+  # Fetch budget ID and category ID from parameters
+  budget_id = params[:budget_id]
+  category_id = params[:category_id]
 
-  # GET /entries/entries_by_budget_with_default_categories
-  def entries_by_budget_with_default_categories
-    # Fetch budget ID from parameters
-    budget_id = params[:budget_id]
-    
-    # Fetch default category IDs
+  # Fetch entries using joins between entries_tags and tags, and filtering by budget_id and category_id
+  if category_id
+    entries = Entry.joins(entries_tags: :tag)  # Join entries_tags and tag
+                   .where(entries_tags: { budget_id: budget_id })
+                   .where(tags: { category_id: category_id })  # Filter by category_id in tags
+                   .includes(:tags)  # Include tags to avoid N+1 queries
+                   .select('entries.*, tags.*')  # Select both entries and tags fields
+  else
+    # If no category_id is provided, fetch entries for all default categories for the given budget
     default_category_ids = Category.where(identifier: 'default').pluck(:id)
-    
-    # Fetch entries with these category IDs and for the specific budget
-    entries = Entry.where(category_id: default_category_ids, budget_id: budget_id).includes(:category)
-    
-    # Combine entries with category details if needed
-    entries_with_category = entries.map do |entry|
-      {
-        entry: entry.attributes,
-        category: entry.category.present? ? entry.category.attributes : {} # Adjust to handle case where category might be nil
-      }
-    end
-    
-    render json: entries_with_category
+    entries = Entry.joins(entries_tags: :tag)
+                   .where(entries_tags: { budget_id: budget_id })
+                   .where(tags: { category_id: default_category_ids })
+                   .includes(:tags)
+                   .select('entries.*, tags.*')
   end
+
+  # Render the entries and associated tags
+  render json: entries.as_json(include: { tags: { only: [:id, :name] } })
+end
 
   # POST /entries
   def create
@@ -44,6 +48,7 @@ class Api::V1::EntriesController < ApplicationController
         tag = Tag.find(tag_id)
         @entry.tags << tag unless @entry.tags.include?(tag)
         end
+        Rails.logger.info("entry saved #{@entry.category_id}")
       render json: @entry, status: :created
     else
       render json: @entry.errors, status: :unprocessable_entity
