@@ -18,27 +18,28 @@ def entries_by_budget_with_default_categories
   budget_id = params[:budget_id]
   category_id = params[:category_id]
 
-  # Fetch entries using joins between entries_tags and tags, and filtering by budget_id and category_id
-  if category_id
-    entries = Entry.joins(entries_tags: :tag)  # Join entries_tags and tag
-                   .where(entries_tags: { budget_id: budget_id })
-                   .where(tags: { category_id: category_id })  # Filter by category_id in tags
-                   .includes(:tags)  # Include tags to avoid N+1 queries
-                   .select('entries.*, tags.*')  # Select both entries and tags fields
-  else
-    # If no category_id is provided, fetch entries for all default categories for the given budget
-    default_category_ids = Category.where(identifier: 'default').pluck(:id)
-    entries = Entry.joins(entries_tags: :tag)
-                   .where(entries_tags: { budget_id: budget_id })
-                   .where(tags: { category_id: default_category_ids })
-                   .includes(:tags)
-                   .select('entries.*, tags.*')
-  end
+  # Get the entries filtered by the selected category only
+entries = Entry.joins(:tags)
+               .where(budget_id: budget_id)
+               .where(tags: { category_id: category_id })  # Only entries tagged with the selected category
+               .distinct
+               .includes(:tags)
 
-  # Render the entries and associated tags
-  render json: entries.as_json(include: { tags: { only: [:id, :name] } })
+
+  Rails.logger.debug JSON.pretty_generate(
+  entries.as_json(
+    include: {
+      tags: { only: [:id, :name, :category_id] }
+    }
+  )
+)
+
+  render json: entries.as_json(
+  include: {
+    tags: { only: [:id, :name, :category_id] }
+  }
+)
 end
-
   # POST /entries
   def create
     @entry = Entry.new(entry_params)
