@@ -12,47 +12,48 @@ class Api::V1::EntriesController < ApplicationController
   def show
     render json: @entry
   end
-# GET /entries/entries_by_budget_with_default_categories
-def entries_by_budget_with_default_categories
-  # Fetch budget ID and category ID from parameters
-  budget_id = params[:budget_id]
-  category_id = params[:category_id]
+  # GET /entries/entries_by_budget_with_default_categories
+  def entries_by_budget_with_default_categories
+    # Fetch budget ID and category ID from parameters
+    budget_id = params[:budget_id]
+    category_id = params[:category_id]
 
-  # Get the entries filtered by the selected category only
-entries = Entry.joins(:tags)
-               .where(budget_id: budget_id)
-               .where(tags: { category_id: category_id })  # Only entries tagged with the selected category
+    # Get the entries filtered by the selected category only
+    entries = Entry.joins(:tags)
+                  .where(budget_id: budget_id)
+                  .where(tags: { category_id: category_id })  # Only entries tagged with the selected category
                .distinct
                .includes(:tags)
 
 
-  Rails.logger.debug JSON.pretty_generate(
-  entries.as_json(
-    include: {
-      tags: { only: [:id, :name, :category_id] }
-    }
-  )
-)
-
-  render json: entries.as_json(
-  include: {
-    tags: { only: [:id, :name, :category_id] }
-  }
-)
-end
+    # Rails.logger.debug "Fetched entries with tags:\n" + JSON.pretty_generate(
+    #   entries.as_json(
+    #     include: {
+    #       tags: { only: [:id, :name, :category_id] }
+    #     }
+    #   )
+    # )
+      render json: entries.as_json(
+      include: {
+        tags: { only: [:id, :name, :category_id] }
+      }
+    )
+  end
   # POST /entries
   def create
-    @entry = Entry.new(entry_params)
+  @entry = Entry.new(entry_params)
 
     if @entry.save
+      # Add tags to the entry
       params[:entry][:tag_ids].each do |tag_id|
         tag = Tag.find(tag_id)
         @entry.tags << tag unless @entry.tags.include?(tag)
-        end
-        Rails.logger.info("entry saved #{@entry.category_id}")
-      render json: @entry, status: :created
+      end
+      # Rails.logger.info("entry saved #{@entry.category_id}")
+      render json: @entry.as_json(include: :tags), status: :created
     else
-      render json: @entry.errors, status: :unprocessable_entity
+      Rails.logger.debug(@entry.errors.full_messages)  
+      render json: { errors: @entry.errors.full_messages }, status: :unprocessable_entity
     end
   end
 
@@ -77,9 +78,20 @@ end
     end
 
     # Only allow a list of trusted parameters through.
-    def entry_params
-      params.require(:entry).permit(:budget_id, :start_date, :amount, :description, :frequency, :custom_frequency_days, :category_id, :frequency_number, :end_date, :tag_ids)
-    end
+     def entry_params
+    params.require(:entry).permit(
+      :budget_id, 
+      :start_date, 
+      :amount, 
+      :description, 
+      :frequency, 
+      :custom_frequency_days, 
+      :category_id, 
+      :frequency_number, 
+      :end_date, 
+      tag_ids: [] # This allows an array of tag IDs
+    )
+     end
 
     #  budget_id: budget.id,
     #   start_date: entryData.start_date,
@@ -90,5 +102,5 @@ end
     #   category_id: CategoryIdMap[selectedCategory],
     #   frequency_number: entryData.frequency_number,
     #   end_date: entryData.end_date,
-    #   tag_ids: tagId, // matching join table for entries_tags
+    #   tag_ids: [tagId], // matching join table for entries_tags
 end
