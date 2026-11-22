@@ -51,3 +51,5 @@ group :development do
   # gem "spring"
 end
 
+
+gem "jwt", "~> 3.1"
