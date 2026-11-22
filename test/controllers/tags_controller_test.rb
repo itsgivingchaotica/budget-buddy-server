@@ -6,31 +6,31 @@ class TagsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should get index" do
-    get tags_url, as: :json
+    get api_v1_tags_url, as: :json
     assert_response :success
   end
 
   test "should create tag" do
     assert_difference("Tag.count") do
-      post tags_url, params: { tag: { name: @tag.name } }, as: :json
+      post api_v1_tags_url, params: { tag: { name: @tag.name } }, as: :json
     end
 
     assert_response :created
   end
 
   test "should show tag" do
-    get tag_url(@tag), as: :json
+    get api_v1_tag_url(@tag), as: :json
     assert_response :success
   end
 
   test "should update tag" do
-    patch tag_url(@tag), params: { tag: { name: @tag.name } }, as: :json
+    patch api_v1_tag_url(@tag), params: { tag: { name: @tag.name } }, as: :json
     assert_response :success
   end
 
   test "should destroy tag" do
     assert_difference("Tag.count", -1) do
-      delete tag_url(@tag), as: :json
+      delete api_v1_tag_url(@tag), as: :json
     end
 
     assert_response :no_content

@@ -6,31 +6,31 @@ class BudgetsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should get index" do
-    get budgets_url, as: :json
+    get api_v1_budgets_url, as: :json
     assert_response :success
   end
 
   test "should create budget" do
     assert_difference("Budget.count") do
-      post budgets_url, params: { budget: { name: @budget.name, user_id: @budget.user_id } }, as: :json
+      post api_v1_budgets_url, params: { budget: { name: @budget.name, user_id: @budget.user_id } }, as: :json
     end
 
     assert_response :created
   end
 
   test "should show budget" do
-    get budget_url(@budget), as: :json
+    get api_v1_budget_url(@budget), as: :json
     assert_response :success
   end
 
   test "should update budget" do
-    patch budget_url(@budget), params: { budget: { name: @budget.name, user_id: @budget.user_id } }, as: :json
+    patch api_v1_budget_url(@budget), params: { budget: { name: @budget.name, user_id: @budget.user_id } }, as: :json
     assert_response :success
   end
 
   test "should destroy budget" do
     assert_difference("Budget.count", -1) do
-      delete budget_url(@budget), as: :json
+      delete api_v1_budget_url(@budget), as: :json
     end
 
     assert_response :no_content

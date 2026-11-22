@@ -6,31 +6,31 @@ class EntriesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should get index" do
-    get entries_url, as: :json
+    get api_v1_entries_url, as: :json
     assert_response :success
   end
 
   test "should create entry" do
     assert_difference("Entry.count") do
-      post entries_url, params: { entry: { amount: @entry.amount, budget_id: @entry.budget_id, custom_frequency_days: @entry.custom_frequency_days, date: @entry.date, description: @entry.description, entry_type: @entry.entry_type, frequency: @entry.frequency } }, as: :json
+      post api_v1_entries_url, params: { entry: { amount: @entry.amount, budget_id: @entry.budget_id, custom_frequency_days: @entry.custom_frequency_days, start_date: @entry.start_date, description: @entry.description, frequency: @entry.frequency } }, as: :json
     end
 
     assert_response :created
   end
 
   test "should show entry" do
-    get entry_url(@entry), as: :json
+    get api_v1_entry_url(@entry), as: :json
     assert_response :success
   end
 
   test "should update entry" do
-    patch entry_url(@entry), params: { entry: { amount: @entry.amount, budget_id: @entry.budget_id, custom_frequency_days: @entry.custom_frequency_days, date: @entry.date, description: @entry.description, entry_type: @entry.entry_type, frequency: @entry.frequency } }, as: :json
+    patch api_v1_entry_url(@entry), params: { entry: { amount: @entry.amount, budget_id: @entry.budget_id, custom_frequency_days: @entry.custom_frequency_days, start_date: @entry.start_date, description: @entry.description, frequency: @entry.frequency } }, as: :json
     assert_response :success
   end
 
   test "should destroy entry" do
     assert_difference("Entry.count", -1) do
-      delete entry_url(@entry), as: :json
+      delete api_v1_entry_url(@entry), as: :json
     end
 
     assert_response :no_content
