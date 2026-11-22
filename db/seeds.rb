@@ -46,6 +46,11 @@ Category.all.each do |category|
   end
 
   tags.each do |tag_name|
-    Tag.find_or_create_by(name: tag_name, category_id: category.id, default_tag: true, user_id: 1)
+    Tag.find_or_create_by!(
+      name: tag_name,
+      category_id: category.id,
+      default_tag: true,
+      user_id: nil
+    )
   end
 end

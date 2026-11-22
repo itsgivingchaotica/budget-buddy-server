@@ -6,7 +6,8 @@ class Api::V1::TagsController < ApplicationController
   end
 
   def default_tags
-    @default_tags = Tag.where(default_tag: true, user_id: 1)
+    @default_tags = Tag.where(default_tag: true)
+    @default_tags = @default_tags.where(user_id: params[:user_id]) if params[:user_id].present?
     render json: @default_tags
   end
 
@@ -48,6 +49,6 @@ class Api::V1::TagsController < ApplicationController
 
   # Only allow a list of trusted parameters through.
   def tag_params
-    params.require(:tag).permit(:name)
+    params.require(:tag).permit(:name, :category_id, :user_id, :default_tag)
   end
 end

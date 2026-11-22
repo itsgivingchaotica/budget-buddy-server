@@ -1,4 +1,6 @@
 class Category < ApplicationRecord
   has_many :tags
-  # Other associations and validations
+  has_many :entries
+
+  validates :name, presence: true
 end

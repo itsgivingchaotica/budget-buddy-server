@@ -41,28 +41,23 @@ class Api::V1::EntriesController < ApplicationController
   end
   # POST /entries
   def create
-  @entry = Entry.new(entry_params)
+    @entry = Entry.new(entry_params.except(:tag_ids))
 
     if @entry.save
-      # Add tags to the entry
-      params[:entry][:tag_ids].each do |tag_id|
-        tag = Tag.find(tag_id)
-        @entry.tags << tag unless @entry.tags.include?(tag)
-      end
-      # Rails.logger.info("entry saved #{@entry.category_id}")
+      sync_tags
       render json: @entry.as_json(include: :tags), status: :created
     else
-      Rails.logger.debug(@entry.errors.full_messages)  
       render json: { errors: @entry.errors.full_messages }, status: :unprocessable_entity
     end
   end
 
   # PATCH/PUT /entries/1
   def update
-    if @entry.update(entry_params)
-      render json: @entry
+    if @entry.update(entry_params.except(:tag_ids))
+      sync_tags if entry_params.key?(:tag_ids)
+      render json: @entry.as_json(include: :tags)
     else
-      render json: @entry.errors, status: :unprocessable_entity
+      render json: { errors: @entry.errors.full_messages }, status: :unprocessable_entity
     end
   end
 
@@ -79,28 +74,21 @@ class Api::V1::EntriesController < ApplicationController
 
     # Only allow a list of trusted parameters through.
      def entry_params
-    params.require(:entry).permit(
-      :budget_id, 
-      :start_date, 
-      :amount, 
-      :description, 
-      :frequency, 
-      :custom_frequency_days, 
-      :category_id, 
-      :frequency_number, 
-      :end_date, 
-      tag_ids: [] # This allows an array of tag IDs
-    )
+       params.require(:entry).permit(
+         :budget_id,
+         :start_date,
+         :amount,
+         :description,
+         :frequency,
+         :custom_frequency_days,
+         :category_id,
+         :frequency_number,
+         :end_date,
+         tag_ids: []
+       )
      end
 
-    #  budget_id: budget.id,
-    #   start_date: entryData.start_date,
-    #   amount: entryData.amount,
-    #   description: entryData.description,
-    #   frequency: entryData.frequency,
-    #   custom_frequency_days: entryData.custom_frequency_days,
-    #   category_id: CategoryIdMap[selectedCategory],
-    #   frequency_number: entryData.frequency_number,
-    #   end_date: entryData.end_date,
-    #   tag_ids: [tagId], // matching join table for entries_tags
+     def sync_tags
+       @entry.tags = Tag.where(id: entry_params[:tag_ids].to_a)
+     end
 end

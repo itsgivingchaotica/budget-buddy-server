@@ -14,8 +14,7 @@ class Api::V1::CategoriesController < ApplicationController
   end
 
   def default
-    # Fetch categories where identifier is 'default'
-    default_categories = Category.where(identifier: 'default').pluck(:name) # Adjust the column names as needed
+    default_categories = Category.where(category_type: 'default')
     render json: default_categories
   end
 
@@ -24,7 +23,7 @@ class Api::V1::CategoriesController < ApplicationController
     @category = Category.new(category_params)
 
     if @category.save
-      render json: @category, status: :created, location: @category
+      render json: @category, status: :created, location: api_v1_category_url(@category)
     else
       render json: @category.errors, status: :unprocessable_entity
     end
@@ -52,6 +51,6 @@ class Api::V1::CategoriesController < ApplicationController
 
     # Only allow a list of trusted parameters through.
     def category_params
-      params.require(:category).permit(:name)
+      params.require(:category).permit(:name, :category_type)
     end
 end
