@@ -6,31 +6,31 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "should get index" do
-    get api_v1_users_url, as: :json
+    get api_v1_users_url, headers: auth_headers, as: :json
     assert_response :success
   end
 
   test "should create user" do
     assert_difference("User.count") do
-      post api_v1_users_url, params: { user: { email: "new@example.com", first_name: @user.first_name, last_name: @user.last_name } }, as: :json
+      post api_v1_users_url, params: { user: { email: "new@example.com", first_name: @user.first_name, last_name: @user.last_name } }, headers: auth_headers, as: :json
     end
 
     assert_response :created
   end
 
   test "should show user" do
-    get api_v1_user_url(@user), as: :json
+    get api_v1_user_url(@user), headers: auth_headers, as: :json
     assert_response :success
   end
 
   test "should update user" do
-    patch api_v1_user_url(@user), params: { user: { email: @user.email, first_name: @user.first_name, last_name: @user.last_name } }, as: :json
+    patch api_v1_user_url(@user), params: { user: { email: @user.email, first_name: @user.first_name, last_name: @user.last_name } }, headers: auth_headers, as: :json
     assert_response :success
   end
 
   test "should destroy user" do
     assert_difference("User.count", -1) do
-      delete api_v1_user_url(@user), as: :json
+      delete api_v1_user_url(@user), headers: auth_headers, as: :json
     end
 
     assert_response :no_content
