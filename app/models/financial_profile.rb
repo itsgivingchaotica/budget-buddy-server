@@ -1,6 +1,13 @@
 # One per user (plan §2.2). Typed columns are what calculations read;
 # free-form onboarding answers live in `answers`.
+#
+# week_starts_on: the first day of the user's week, as Ruby's Date#wday
+#   (0 = Sunday, 1 = Monday, ... 6 = Saturday). Default 1 = Monday (PO-12).
+# time_zone: an IANA zone name (e.g. "Europe/London"), nil until set (PO-12).
 class FinancialProfile < ApplicationRecord
+  MONDAY = 1
+  SUNDAY = 0
+
   PAY_FREQUENCIES = %w[weekly biweekly semimonthly monthly irregular].freeze
   CHANGE_APPETITES = %w[small medium large].freeze
 

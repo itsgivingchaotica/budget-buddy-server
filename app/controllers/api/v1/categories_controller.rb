@@ -4,9 +4,12 @@
 class Api::V1::CategoriesController < ApplicationController
   before_action :render_forbidden, only: %i[ create update destroy ]
 
-  # GET /categories
+  # GET /categories -> the active flat list in display order, with labels
+  # (legacy rows excluded; the current client doesn't call this endpoint).
   def index
-    render json: Category.all
+    render json: Category.active_list.as_json(
+      only: %i[id slug name kind position need_want fixed_variable recurrence_label]
+    )
   end
 
   # GET /categories/1

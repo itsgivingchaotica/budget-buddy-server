@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_24_150100) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_24_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -27,6 +27,20 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_24_150100) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "category_type"
+    t.string "slug"
+    t.string "kind", null: false
+    t.boolean "active", default: false, null: false
+    t.integer "position"
+    t.string "need_want"
+    t.string "fixed_variable"
+    t.string "recurrence_label"
+    t.index ["slug"], name: "index_categories_on_slug", unique: true
+    t.check_constraint "fixed_variable IS NULL OR (fixed_variable::text = ANY (ARRAY['fixed'::character varying, 'variable'::character varying]::text[]))", name: "categories_fixed_variable_check"
+    t.check_constraint "kind::text <> 'spending'::text OR fixed_variable IS NOT NULL", name: "categories_spending_needs_fixed_variable"
+    t.check_constraint "kind::text = 'legacy'::text OR slug IS NOT NULL", name: "categories_slug_required"
+    t.check_constraint "kind::text = ANY (ARRAY['spending'::character varying, 'income'::character varying, 'transfer'::character varying, 'legacy'::character varying]::text[])", name: "categories_kind_check"
+    t.check_constraint "need_want IS NULL OR (need_want::text = ANY (ARRAY['need'::character varying, 'want'::character varying]::text[]))", name: "categories_need_want_check"
+    t.check_constraint "recurrence_label IS NULL OR (recurrence_label::text = ANY (ARRAY['one_time'::character varying, 'recurring'::character varying]::text[]))", name: "categories_recurrence_label_check"
   end
 
   create_table "entries", force: :cascade do |t|
