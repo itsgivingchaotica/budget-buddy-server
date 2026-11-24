@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_04_19_232612) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_24_150100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -56,6 +56,23 @@ ActiveRecord::Schema[7.1].define(version: 2025_04_19_232612) do
     t.index ["user_id"], name: "index_entries_tags_on_user_id"
   end
 
+  create_table "financial_profiles", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.jsonb "answers", default: {}, null: false
+    t.integer "answers_version"
+    t.string "pay_frequency"
+    t.date "next_pay_on"
+    t.decimal "typical_pay_amount", precision: 12, scale: 2
+    t.string "change_appetite"
+    t.integer "week_starts_on", default: 1, null: false
+    t.string "time_zone"
+    t.datetime "onboarding_completed_at"
+    t.jsonb "coach_notes", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_financial_profiles_on_user_id", unique: true
+  end
+
   create_table "tags", force: :cascade do |t|
     t.string "name"
     t.datetime "created_at", null: false
@@ -74,6 +91,9 @@ ActiveRecord::Schema[7.1].define(version: 2025_04_19_232612) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "picture"
+    t.string "kinde_id"
+    t.index "lower((email)::text)", name: "index_users_on_lower_email", unique: true
+    t.index ["kinde_id"], name: "index_users_on_kinde_id", unique: true
   end
 
   add_foreign_key "budgets", "users"
@@ -81,5 +101,6 @@ ActiveRecord::Schema[7.1].define(version: 2025_04_19_232612) do
   add_foreign_key "entries", "categories"
   add_foreign_key "entries_tags", "budgets"
   add_foreign_key "entries_tags", "users"
+  add_foreign_key "financial_profiles", "users"
   add_foreign_key "tags", "categories"
 end

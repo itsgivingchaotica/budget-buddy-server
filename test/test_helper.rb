@@ -4,9 +4,12 @@ require "rails/test_help"
 require_relative "support/auth_test_helper"
 
 AuthTestHelper.install_verifier!
+AuthTestHelper.install_profile_fetcher!
 
 module ActiveSupport
   class TestCase
+    include AuthTestHelper
+
     # Run tests in parallel with specified workers
     parallelize(workers: :number_of_processors)
 
@@ -15,8 +18,4 @@ module ActiveSupport
 
     # Add more helper methods to be used by all tests here...
   end
-end
-
-class ActionDispatch::IntegrationTest
-  include AuthTestHelper
 end

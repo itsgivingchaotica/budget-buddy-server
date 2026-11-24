@@ -1,6 +1,8 @@
 Rails.application.routes.draw do
   namespace :api do
     namespace :v1 do
+      get "me", to: "me#show"
+
       resources :entries do
         collection do
           get "entries_by_budget_with_default_categories"

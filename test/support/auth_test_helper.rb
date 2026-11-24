@@ -22,6 +22,49 @@ module AuthTestHelper
     Authenticatable.verifier = build_verifier
   end
 
+  # Stands in for Kinde's /oauth2/v2/user_profile. Records the tokens it was
+  # called with; raises Unavailable when given an exception or nothing.
+  class FakeProfileFetcher
+    attr_reader :tokens
+
+    def initialize(response = nil)
+      @response = response
+      @tokens = []
+    end
+
+    def call(access_token)
+      @tokens << access_token
+      raise Kinde::UserProfileFetcher::Unavailable, "no Kinde profile in tests" if @response.nil?
+      raise @response if @response.is_a?(Exception)
+
+      @response
+    end
+
+    def calls
+      @tokens.size
+    end
+  end
+
+  # By default no test may reach Kinde's profile endpoint.
+  def self.install_profile_fetcher!(fetcher = FakeProfileFetcher.new)
+    Kinde::UserProfileFetcher.default = fetcher
+  end
+
+  # Runs the block with a fake Kinde profile response; returns the fake.
+  def with_kinde_profile(response)
+    fake = FakeProfileFetcher.new(response)
+    AuthTestHelper.install_profile_fetcher!(fake)
+    yield fake
+    fake
+  ensure
+    AuthTestHelper.install_profile_fetcher!
+  end
+
+  def kinde_profile(sub: "kp_test_user", email: "new.person@example.com", email_verified: true, **extra)
+    { "id" => sub, "email" => email, "email_verified" => email_verified,
+      "given_name" => "New", "family_name" => "Person" }.merge(extra.transform_keys(&:to_s)).compact
+  end
+
   # Claim overrides use string keys; a nil value removes the claim.
   def access_token(key: SIGNING_KEY, kid: KID, **claims)
     now = Time.now.to_i

@@ -15,6 +15,7 @@ module Authenticatable
 
   UNAUTHORIZED_BODY = { error: "unauthorized" }.freeze
   UNAVAILABLE_BODY = { error: "authentication_unavailable" }.freeze
+  NOT_PROVISIONED_BODY = { error: "user_not_provisioned" }.freeze
   VERIFIER_LOCK = Mutex.new
 
   class << self
@@ -46,8 +47,27 @@ module Authenticatable
     current_auth_claims&.fetch("sub")
   end
 
+  # The User linked to the token's `sub` (S2), or nil until GET /me has
+  # provisioned one.
+  def current_user
+    return @current_user if defined?(@current_user)
+
+    @current_user = current_kinde_sub && User.find_by(kinde_id: current_kinde_sub)
+  end
+
+  # For actions that need a user row: the client calls GET /me first.
+  def require_current_user!
+    render json: NOT_PROVISIONED_BODY, status: :forbidden unless current_user
+  end
+
+  # The verified raw token, only for calling Kinde on the user's behalf
+  # (GET /me). Never logged or rendered.
+  attr_reader :current_access_token
+
   def authenticate!
-    @current_auth_claims = Authenticatable.verifier.verify(bearer_token)
+    token = bearer_token
+    @current_auth_claims = Authenticatable.verifier.verify(token)
+    @current_access_token = token
   rescue Kinde::TokenVerifier::InvalidToken => e
     Rails.logger.info("[auth] rejected request: #{e.reason}")
     response.set_header("WWW-Authenticate", 'Bearer realm="budget-buddy"')
