@@ -1,56 +1,25 @@
+# Categories are global reference data: any signed-in caller can read them;
+# nobody can change them through the API (S3-L; the flat list comes from
+# seeds, DM-1).
 class Api::V1::CategoriesController < ApplicationController
-  before_action :set_category, only: %i[ show update destroy ]
+  before_action :render_forbidden, only: %i[ create update destroy ]
 
   # GET /categories
   def index
-    @categories = Category.all
-
-    render json: @categories
+    render json: Category.all
   end
 
   # GET /categories/1
   def show
-    render json: @category
+    render json: Category.find(params[:id])
   end
 
+  # GET /categories/default
   def default
-    default_categories = Category.where(category_type: 'default')
-    render json: default_categories
+    render json: Category.where(category_type: 'default')
   end
 
-  # POST /categories
-  def create
-    @category = Category.new(category_params)
-
-    if @category.save
-      render json: @category, status: :created, location: api_v1_category_url(@category)
-    else
-      render json: @category.errors, status: :unprocessable_entity
-    end
-  end
-
-  # PATCH/PUT /categories/1
-  def update
-    if @category.update(category_params)
-      render json: @category
-    else
-      render json: @category.errors, status: :unprocessable_entity
-    end
-  end
-
-  # DELETE /budgets/1
-  def destroy
-    @category.destroy!
-  end
-
-  private
-    # Use callbacks to share common setup or constraints between actions.
-    def set_category
-      @category = Category.find(params[:id])
-    end
-
-    # Only allow a list of trusted parameters through.
-    def category_params
-      params.require(:category).permit(:name, :category_type)
-    end
+  def create; end
+  def update; end
+  def destroy; end
 end

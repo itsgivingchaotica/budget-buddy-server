@@ -1,11 +1,11 @@
+# Legacy budgets (frozen, plan §2.1), scoped to the caller (S3-L).
 class Api::V1::BudgetsController < ApplicationController
+  before_action :require_current_user!
   before_action :set_budget, only: %i[ show update destroy ]
 
   # GET /budgets
   def index
-    @budgets = Budget.all
-
-    render json: @budgets
+    render json: current_user.budgets
   end
 
   # GET /budgets/1
@@ -13,9 +13,9 @@ class Api::V1::BudgetsController < ApplicationController
     render json: @budget
   end
 
-  # POST /budgets
+  # POST /budgets (any user_id in the body is ignored)
   def create
-    @budget = Budget.new(budget_params)
+    @budget = current_user.budgets.new(budget_params)
 
     if @budget.save
       render json: @budget, status: :created
@@ -39,13 +39,11 @@ class Api::V1::BudgetsController < ApplicationController
   end
 
   private
-    # Use callbacks to share common setup or constraints between actions.
     def set_budget
-      @budget = Budget.find(params[:id])
+      @budget = current_user.budgets.find(params[:id])
     end
 
-    # Only allow a list of trusted parameters through.
     def budget_params
-      params.require(:budget).permit(:user_id, :name)
+      params.require(:budget).permit(:name)
     end
 end
