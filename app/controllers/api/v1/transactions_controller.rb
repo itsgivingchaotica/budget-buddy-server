@@ -31,15 +31,17 @@ class Api::V1::TransactionsController < ApplicationController
     render json: { transactions: rows.map { |t| transaction_json(t) }, page:, per_page:, total: scope.count }
   end
 
-  # POST /transactions/categorize - re-run categorization on the caller's
-  # rows waiting for review (memory -> rules -> AI). S4-min: at most
-  # AiRateLimit::LIMITS[:categorize] per hour per user, and refused before
-  # any work once the daily AI cap is reached.
+  # POST /transactions/categorize - categorize the caller's uncategorized
+  # rows (memory -> rules -> Claude). AI2: Claude sees at most
+  # Pipeline::AI_ROWS_PER_RUN rows per call, each row once; the client calls
+  # again while `remaining` > 0. S4-min: at most AiRateLimit::LIMITS[:categorize]
+  # per hour per user, and refused before any work once the daily AI cap is
+  # reached.
   def categorize
     AiRateLimit.hit!(current_user, :categorize)
     AiBudget.check!(current_user, :categorize)
-    summary = Categorization::Pipeline.call(user: current_user, scope: current_user.transactions.where(needs_review: true))
-    render json: { categorized: summary.to_h }
+    summary = Categorization::Pipeline.call(user: current_user, scope: current_user.transactions)
+    render json: { processed: summary.processed, remaining: summary.remaining, categorized: summary.to_h }
   rescue AiRateLimit::Limited => e
     response.set_header("Retry-After", e.retry_after.to_s)
     render json: { error: "rate_limited", retry_after: e.retry_after }, status: :too_many_requests
@@ -59,7 +61,9 @@ class Api::V1::TransactionsController < ApplicationController
       # forgotten (PO, 2026-11-24). Other sources leave memory alone.
       ActiveRecord::Base.transaction do
         forget_merchant! if @transaction.categorization_source == "memory"
-        @transaction.update!(category: nil, categorization_source: "none", confidence: nil, needs_review: true)
+        # ai_attempted_at: the AI must not re-categorize a row the user cleared (AI2).
+        @transaction.update!(category: nil, categorization_source: "none", confidence: nil, needs_review: true,
+                             ai_attempted_at: Time.current)
       end
       return render json: transaction_json(@transaction)
     end

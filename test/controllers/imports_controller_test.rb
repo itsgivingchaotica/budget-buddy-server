@@ -154,7 +154,7 @@ class ImportsControllerTest < ActionDispatch::IntegrationTest
     users(:one).merchant_rules.create!(merchant_key: "CORNER GROCERY", category: groceries)
     body = import!(HEADER + "2026-11-01,ACME PAYROLL,1850.00\n2026-11-02,Corner Grocery #214,-64.18\n" \
                             "2026-11-03,Rent,-1200.00\n2026-11-04,ZQX Holdings,-9.99\n")
-    assert_equal({ "memory" => 1, "rule" => 2, "ai" => 0, "needs_review" => 1 }, body["categorized"])
+    assert_equal({ "memory" => 1, "rule" => 2, "ai" => 0, "needs_review" => 1 }, body["categorized"].slice("memory", "rule", "ai", "needs_review"))
     rows = @account.transactions.where(import_id: body["id"]).index_by(&:description)
     assert_equal [income.id, "rule"], rows["ACME PAYROLL"].then { |t| [t.category_id, t.categorization_source] }
     assert_equal [groceries.id, "memory"], rows["Corner Grocery #214"].then { |t| [t.category_id, t.categorization_source] }

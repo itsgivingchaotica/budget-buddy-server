@@ -153,16 +153,48 @@ class Categorization::PipelineTest < ActiveSupport::TestCase
     assert t.reload.needs_review
   end
 
-  test "transfer-like, person-to-person and Amazon rows skip the rules and go to the AI step, with account purpose" do
+  # PO, 2026-11-25: supersedes "transfer-like rows go to Claude first".
+  test "person-to-person and Amazon rows go to the AI step with account purpose; transfer-like rows never do" do
     side = @user.accounts.create!(name: "Etsy payouts", kind: "p2p", purpose: "side_income")
-    txn("TRANSFER TO SAVINGS")
+    transfers = [txn("TRANSFER TO SAVINGS"), txn("VENMO CASHOUT", "120.00", account: side), txn("Cash Out to bank")]
     txn("ZELLE TO J SMITH")
     txn("AMAZON MKTPLACE PMTS")
-    txn("VENMO CASHOUT", "120.00", account: side)
+    txn("Payment from A. Rivera", "80.00", account: side)
+    ai = FakeAi.new
+    summary = run_pipeline(ai:)
+    items = ai.calls.first[:items].to_h { |i| [i[:merchant], i[:account_purpose]] }
+    assert_equal({ "ZELLE TO J SMITH" => "spending", "AMAZON MKTPLACE PMTS" => "spending",
+                   "PAYMENT FROM A. RIVERA" => "side_income" }, items)
+    transfers.each do |t|
+      t.reload
+      assert_equal ["none", nil, true], [t.categorization_source, t.category_id, t.needs_review], t.description
+      assert_not_nil t.ai_attempted_at, "never queued for Claude"
+    end
+    assert_equal [3, 0], [summary.transfer_like, summary.remaining]
+  end
+
+  test "a row naming another of the user's own accounts is transfer-like; its own account's name isn't" do
+    savings = @user.accounts.create!(name: "Rainy Day Savings", kind: "savings", purpose: "savings")
+    to_savings = txn("Online payment Rainy Day Savings")
+    in_savings = txn("RAINY DAY SAVINGS INTEREST", "1.00", account: savings)
     ai = FakeAi.new
     run_pipeline(ai:)
-    items = ai.calls.first[:items].to_h { |i| [i[:merchant], i[:account_purpose]] }
-    assert_equal({ "TRANSFER TO SAVINGS" => "spending", "ZELLE TO J SMITH" => "spending",
-                   "AMAZON MKTPLACE PMTS" => "spending", "VENMO CASHOUT" => "side_income" }, items)
+    assert_equal ["RAINY DAY SAVINGS INTEREST"], ai.calls.flat_map { |c| c[:items].map { |i| i[:merchant] } }
+    assert to_savings.reload.needs_review
+  end
+
+  test "merchant memory still wins over the transfer check" do
+    @user.merchant_rules.create!(merchant_key: "TRANSFER TO LANDLORD", category: @cat["groceries"])
+    t = txn("TRANSFER TO LANDLORD")
+    run_pipeline
+    assert_equal [@cat["groceries"].id, "memory"], t.reload.then { |x| [x.category_id, x.categorization_source] }
+  end
+
+  test "the transfer check is never applied to another user's account names" do
+    users(:two).accounts.create!(name: "Mystery Vault", kind: "savings", purpose: "savings")
+    ai = FakeAi.new
+    txn("MYSTERY VAULT ZQX")
+    run_pipeline(ai:)
+    assert_equal ["MYSTERY VAULT ZQX"], ai.calls.first[:items].map { |i| i[:merchant] }
   end
 end

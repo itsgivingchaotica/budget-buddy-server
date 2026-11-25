@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_24_200000) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_24_210000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -183,9 +183,11 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_24_200000) do
     t.boolean "needs_review", default: false, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.datetime "ai_attempted_at"
     t.index ["account_id", "base_key", "occurrence"], name: "index_transactions_on_account_base_key_occurrence", unique: true
     t.index ["account_id", "external_id"], name: "index_transactions_on_account_external_id", unique: true, where: "(external_id IS NOT NULL)"
     t.index ["account_id", "posted_on"], name: "index_transactions_on_account_id_and_posted_on"
+    t.index ["account_id"], name: "index_transactions_awaiting_ai", where: "(((categorization_source)::text = 'none'::text) AND (ai_attempted_at IS NULL))"
     t.index ["account_id"], name: "index_transactions_on_account_id"
     t.index ["category_id"], name: "index_transactions_on_category_id"
     t.index ["import_id"], name: "index_transactions_on_import_id"

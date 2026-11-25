@@ -43,7 +43,7 @@ class MerchantMemoryTest < ActionDispatch::IntegrationTest
     ai = FakeAi.new
     Categorization::DisabledAi.stub(:new, ai) do
       body = import_csv("date,description,amount\n2026-12-03,ZQX CORNER STORE #99,-7.10\n2026-12-04,Unknown Thing,-3.00\n")
-      assert_equal({ "memory" => 1, "rule" => 0, "ai" => 0, "needs_review" => 1 }, body["categorized"])
+      assert_equal({ "memory" => 1, "rule" => 0, "ai" => 0, "needs_review" => 1 }, body["categorized"].slice("memory", "rule", "ai", "needs_review"))
     end
     learned = @account.transactions.find_by(posted_on: Date.new(2026, 12, 3))
     assert_equal [@groceries.id, "memory"], [learned.category_id, learned.categorization_source]

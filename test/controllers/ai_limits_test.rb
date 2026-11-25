@@ -41,10 +41,14 @@ class AiLimitsTest < ActionDispatch::IntegrationTest
     post categorize_api_v1_transactions_url, headers:, as: :json
   end
 
-  test "categorize re-runs the pipeline on rows waiting for review" do
+  test "categorize runs the pipeline on all the caller's uncategorized rows and reports processed/remaining" do
     categorize!
     assert_response :success
-    assert_equal({ "memory" => 0, "rule" => 0, "ai" => 0, "needs_review" => 1 }, response.parsed_body["categorized"])
+    body = response.parsed_body
+    # @mine plus the fixture row; with no AI configured both are "answered" (sent to review).
+    assert_equal({ "memory" => 0, "rule" => 0, "ai" => 0, "needs_review" => 2 },
+                 body["categorized"].slice("memory", "rule", "ai", "needs_review"))
+    assert_equal [2, 0], body.values_at("processed", "remaining")
   end
 
   test "20 categorize requests per hour per user, then 429 JSON with Retry-After" do
@@ -95,8 +99,9 @@ class AiLimitsTest < ActionDispatch::IntegrationTest
       post api_v1_account_imports_url(accounts(:one_checking)), params: { file: upload }, headers: auth_headers
     end
     assert_response :created
-    assert_equal({ "memory" => 0, "rule" => 1, "ai" => 0, "needs_review" => 1 }, response.parsed_body["categorized"])
+    assert_equal({ "memory" => 0, "rule" => 1, "ai" => 0, "needs_review" => 1 }, response.parsed_body["categorized"].slice("memory", "rule", "ai", "needs_review"))
     assert_equal 0, sdk.calls
+    assert_equal 1, response.parsed_body["categorized"]["remaining"], "the unanswered row resumes on the next call"
   ensure
     ENV.delete("AI_DAILY_TOKEN_CAP")
   end
