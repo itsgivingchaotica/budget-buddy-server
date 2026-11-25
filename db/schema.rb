@@ -10,9 +10,28 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_24_160000) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_24_170000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
+
+  create_table "accounts", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "name", null: false
+    t.string "kind", null: false
+    t.string "purpose", null: false
+    t.string "purpose_note"
+    t.decimal "opening_balance", precision: 12, scale: 2
+    t.date "opening_balance_on"
+    t.datetime "archived_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index "user_id, lower((name)::text)", name: "index_accounts_on_user_id_and_lower_name", unique: true
+    t.index ["user_id"], name: "index_accounts_on_user_id"
+    t.check_constraint "(opening_balance IS NULL) = (opening_balance_on IS NULL)", name: "accounts_opening_balance_pair_check"
+    t.check_constraint "kind::text = ANY (ARRAY['checking'::character varying, 'savings'::character varying, 'credit_card'::character varying, 'p2p'::character varying, 'cash'::character varying, 'other'::character varying]::text[])", name: "accounts_kind_check"
+    t.check_constraint "length(btrim(name::text)) >= 1 AND length(btrim(name::text)) <= 60", name: "accounts_name_length_check"
+    t.check_constraint "purpose::text = ANY (ARRAY['spending'::character varying, 'bills'::character varying, 'savings'::character varying, 'side_income'::character varying, 'other'::character varying]::text[])", name: "accounts_purpose_check"
+  end
 
   create_table "budgets", force: :cascade do |t|
     t.bigint "user_id", null: false
@@ -110,6 +129,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_24_160000) do
     t.index ["kinde_id"], name: "index_users_on_kinde_id", unique: true
   end
 
+  add_foreign_key "accounts", "users"
   add_foreign_key "budgets", "users"
   add_foreign_key "entries", "budgets"
   add_foreign_key "entries", "categories"

@@ -2,6 +2,7 @@ class User < ApplicationRecord
   has_many :budgets, class_name: 'Budget', foreign_key: :user_id, dependent: :destroy
   has_many :entries_tags, dependent: :destroy
   has_one :financial_profile, dependent: :destroy
+  has_many :accounts, dependent: :destroy
 
   # Users created from a Kinde identity (S2) take names and email from Kinde,
   # which may not provide them; legacy users still need all three.

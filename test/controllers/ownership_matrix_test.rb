@@ -42,6 +42,11 @@ class OwnershipMatrixTest < ActionDispatch::IntegrationTest
     "tags#update other"          => [:patch,  -> { api_v1_tag_url(tags(:two)) }, { tag: { name: "X" } }, :not_found],
     "tags#destroy other"         => [:delete, -> { api_v1_tag_url(tags(:two)) }, nil, :not_found],
 
+    # --- accounts (DM-2) ---------------------------------------------------------
+    "accounts#show other"        => [:get,    -> { api_v1_account_url(accounts(:two_checking)) }, nil, :not_found],
+    "accounts#update other"      => [:patch,  -> { api_v1_account_url(accounts(:two_checking)) }, { account: { name: "X" } }, :not_found],
+    "accounts#destroy other"     => [:delete, -> { api_v1_account_url(accounts(:two_checking)) }, nil, :not_found],
+
     # --- categories: global, read-only (S3-L) -----------------------------------
     "categories#create"          => [:post,   -> { api_v1_categories_url }, { category: { name: "X" } }, :forbidden],
     "categories#update"          => [:patch,  -> { api_v1_category_url(categories(:expense)) }, { category: { name: "X" } }, :forbidden],
@@ -50,7 +55,7 @@ class OwnershipMatrixTest < ActionDispatch::IntegrationTest
 
   # A fingerprint of everything the rows could touch.
   def snapshot
-    [User, Budget, Entry, Tag, Category].to_h do |model|
+    [User, Budget, Entry, Tag, Category, Account].to_h do |model|
       [model.name, model.order(:id).map { |r| r.attributes.except("updated_at") }]
     end.merge("EntriesTags" => Entry.order(:id).map { |e| e.tag_ids.sort })
   end
@@ -80,6 +85,9 @@ class OwnershipMatrixTest < ActionDispatch::IntegrationTest
 
     get api_v1_users_url, headers: auth_headers, as: :json
     assert_equal [users(:one).id], response.parsed_body.map { |u| u["id"] }
+
+    get api_v1_accounts_url(include_archived: true), headers: auth_headers, as: :json
+    assert_equal [accounts(:one_checking).id], response.parsed_body.map { |a| a["id"] }
   end
 
   # --- injected owner ids are ignored ---------------------------------------------
@@ -106,7 +114,7 @@ class OwnershipMatrixTest < ActionDispatch::IntegrationTest
 
   test "a valid token without a provisioned user gets 403 on every scoped resource" do
     headers = auth_headers("sub" => "kp_not_provisioned")
-    [api_v1_budgets_url, api_v1_entries_url, api_v1_tags_url, api_v1_users_url].each do |url|
+    [api_v1_budgets_url, api_v1_entries_url, api_v1_tags_url, api_v1_users_url, api_v1_accounts_url].each do |url|
       get url, headers: headers, as: :json
       assert_response :forbidden, url
     end
