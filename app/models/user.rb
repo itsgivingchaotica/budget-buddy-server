@@ -3,6 +3,10 @@ class User < ApplicationRecord
   has_many :entries_tags, dependent: :destroy
   has_one :financial_profile, dependent: :destroy
   has_many :accounts, dependent: :destroy
+  # T1: imports and transactions are owned through accounts (AD2), not by a
+  # user_id column, so ownership can't drift.
+  has_many :imports, through: :accounts
+  has_many :transactions, through: :accounts
 
   # Users created from a Kinde identity (S2) take names and email from Kinde,
   # which may not provide them; legacy users still need all three.

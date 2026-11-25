@@ -10,6 +10,9 @@ class Account < ApplicationRecord
   PURPOSES = %w[spending bills savings side_income other].freeze
 
   belongs_to :user
+  # T1: accounts are archived, never deleted, so their history stays.
+  has_many :imports, dependent: :restrict_with_exception
+  has_many :transactions, dependent: :restrict_with_exception
 
   normalizes :name, with: ->(name) { name.strip }
   normalizes :purpose_note, with: ->(note) { note.strip.presence }

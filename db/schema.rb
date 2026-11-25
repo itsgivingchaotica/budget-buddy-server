@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_24_170000) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_24_180100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -106,6 +106,28 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_24_170000) do
     t.index ["user_id"], name: "index_financial_profiles_on_user_id", unique: true
   end
 
+  create_table "imports", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "filename", null: false
+    t.string "status", default: "processing", null: false
+    t.integer "row_count", default: 0, null: false
+    t.integer "inserted_count", default: 0, null: false
+    t.integer "duplicate_count", default: 0, null: false
+    t.integer "error_count", default: 0, null: false
+    t.jsonb "row_errors", default: [], null: false
+    t.date "data_from"
+    t.date "data_through"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_imports_on_account_id"
+    t.index ["id", "account_id"], name: "index_imports_on_id_and_account_id", unique: true
+    t.check_constraint "data_from IS NULL OR data_through IS NULL OR data_from <= data_through", name: "imports_data_range_check"
+    t.check_constraint "jsonb_typeof(row_errors) = 'array'::text", name: "imports_row_errors_array_check"
+    t.check_constraint "length(btrim(filename::text)) >= 1 AND length(btrim(filename::text)) <= 255", name: "imports_filename_length_check"
+    t.check_constraint "row_count >= 0 AND inserted_count >= 0 AND duplicate_count >= 0 AND error_count >= 0", name: "imports_counts_check"
+    t.check_constraint "status::text = ANY (ARRAY['processing'::character varying, 'completed'::character varying, 'failed'::character varying]::text[])", name: "imports_status_check"
+  end
+
   create_table "tags", force: :cascade do |t|
     t.string "name"
     t.datetime "created_at", null: false
@@ -115,6 +137,39 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_24_170000) do
     t.bigint "category_id"
     t.index ["category_id"], name: "index_tags_on_category_id"
     t.index ["user_id"], name: "index_tags_on_user_id"
+  end
+
+  create_table "transactions", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "import_id"
+    t.date "posted_on", null: false
+    t.decimal "amount", precision: 12, scale: 2, null: false
+    t.string "description", null: false
+    t.string "normalized_description", null: false
+    t.string "external_id"
+    t.string "base_key", null: false
+    t.integer "occurrence", default: 1, null: false
+    t.bigint "category_id"
+    t.string "categorization_source", default: "none", null: false
+    t.decimal "confidence", precision: 4, scale: 3
+    t.boolean "needs_review", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "base_key", "occurrence"], name: "index_transactions_on_account_base_key_occurrence", unique: true
+    t.index ["account_id", "external_id"], name: "index_transactions_on_account_external_id", unique: true, where: "(external_id IS NOT NULL)"
+    t.index ["account_id", "posted_on"], name: "index_transactions_on_account_id_and_posted_on"
+    t.index ["account_id"], name: "index_transactions_on_account_id"
+    t.index ["category_id"], name: "index_transactions_on_category_id"
+    t.index ["import_id"], name: "index_transactions_on_import_id"
+    t.check_constraint "(categorization_source::text = 'none'::text) = (category_id IS NULL)", name: "transactions_source_matches_category_check"
+    t.check_constraint "amount <> 0::numeric", name: "transactions_amount_nonzero_check"
+    t.check_constraint "base_key::text ~ '^[0-9a-f]{64}$'::text", name: "transactions_base_key_format_check"
+    t.check_constraint "categorization_source::text = ANY (ARRAY['user'::character varying, 'memory'::character varying, 'rule'::character varying, 'ai'::character varying, 'transfer'::character varying, 'none'::character varying]::text[])", name: "transactions_categorization_source_check"
+    t.check_constraint "confidence IS NULL OR confidence >= 0::numeric AND confidence <= 1::numeric", name: "transactions_confidence_range_check"
+    t.check_constraint "external_id IS NULL OR length(btrim(external_id::text)) >= 1 AND length(btrim(external_id::text)) <= 255", name: "transactions_external_id_length_check"
+    t.check_constraint "length(btrim(description::text)) >= 1 AND length(btrim(description::text)) <= 255", name: "transactions_description_length_check"
+    t.check_constraint "length(normalized_description::text) >= 1 AND length(normalized_description::text) <= 255", name: "transactions_normalized_description_length_check"
+    t.check_constraint "occurrence >= 1", name: "transactions_occurrence_check"
   end
 
   create_table "users", force: :cascade do |t|
@@ -136,5 +191,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_24_170000) do
   add_foreign_key "entries_tags", "budgets"
   add_foreign_key "entries_tags", "users"
   add_foreign_key "financial_profiles", "users"
+  add_foreign_key "imports", "accounts"
   add_foreign_key "tags", "categories"
+  add_foreign_key "transactions", "accounts"
+  add_foreign_key "transactions", "categories"
+  add_foreign_key "transactions", "imports", column: ["import_id", "account_id"], primary_key: ["id", "account_id"], name: "fk_transactions_import_same_account"
 end
