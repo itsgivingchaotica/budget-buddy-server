@@ -31,6 +31,22 @@ class Api::V1::TransactionsController < ApplicationController
     render json: { transactions: rows.map { |t| transaction_json(t) }, page:, per_page:, total: scope.count }
   end
 
+  # POST /transactions/categorize - re-run categorization on the caller's
+  # rows waiting for review (memory -> rules -> AI). S4-min: at most
+  # AiRateLimit::LIMITS[:categorize] per hour per user, and refused before
+  # any work once the daily AI cap is reached.
+  def categorize
+    AiRateLimit.hit!(current_user, :categorize)
+    AiBudget.check!(current_user, :categorize)
+    summary = Categorization::Pipeline.call(user: current_user, scope: current_user.transactions.where(needs_review: true))
+    render json: { categorized: summary.to_h }
+  rescue AiRateLimit::Limited => e
+    response.set_header("Retry-After", e.retry_after.to_s)
+    render json: { error: "rate_limited", retry_after: e.retry_after }, status: :too_many_requests
+  rescue AiBudget::Exceeded
+    render json: { error: "ai_daily_cap_reached" }, status: :too_many_requests
+  end
+
   # PATCH /transactions/1  { transaction: { category: "groceries" } }  (or null to clear)
   # Only the category can change; it becomes the user's choice.
   def update

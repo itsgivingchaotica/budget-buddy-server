@@ -28,6 +28,7 @@ schema = {
 result = AnthropicClient.new(logger: Logger.new($stdout)).structured(
   feature: "smoke",
   use: :categorization,
+  unmetered: true, # offline check only; real features are always metered (S4-min)
   system: "You categorize bank transactions. Reply only with the JSON the schema asks for.",
   user: "Categorize each item: [{\"index\":0,\"merchant\":\"MAPLE STREET GROCER\",\"amount\":\"-23.10\"}," \
         "{\"index\":1,\"merchant\":\"CITY PARKING\",\"amount\":\"-6.00\"}]",

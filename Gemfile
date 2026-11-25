@@ -44,6 +44,9 @@ gem "bootsnap", require: false
 # AI-0 (Claude connection): official Anthropic SDK
 gem "anthropic", "~> 2.14"
 
+# S4-min (rate limit and AI cost cap): per-IP request throttling
+gem "rack-attack", "~> 6.8"
+
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ]

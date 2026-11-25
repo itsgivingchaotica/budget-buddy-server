@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_24_190000) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_24_200000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -31,6 +31,20 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_24_190000) do
     t.check_constraint "kind::text = ANY (ARRAY['checking'::character varying, 'savings'::character varying, 'credit_card'::character varying, 'p2p'::character varying, 'cash'::character varying, 'other'::character varying]::text[])", name: "accounts_kind_check"
     t.check_constraint "length(btrim(name::text)) >= 1 AND length(btrim(name::text)) <= 60", name: "accounts_name_length_check"
     t.check_constraint "purpose::text = ANY (ARRAY['spending'::character varying, 'bills'::character varying, 'savings'::character varying, 'side_income'::character varying, 'other'::character varying]::text[])", name: "accounts_purpose_check"
+  end
+
+  create_table "ai_usage", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.date "day", null: false
+    t.string "feature", null: false
+    t.integer "requests", default: 0, null: false
+    t.bigint "input_tokens", default: 0, null: false
+    t.bigint "output_tokens", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id", "day", "feature"], name: "index_ai_usage_on_user_id_and_day_and_feature", unique: true
+    t.check_constraint "feature::text = ANY (ARRAY['categorize'::character varying, 'onboarding'::character varying, 'plan'::character varying, 'assistant'::character varying]::text[])", name: "ai_usage_feature_check"
+    t.check_constraint "requests >= 0 AND input_tokens >= 0 AND output_tokens >= 0", name: "ai_usage_counts_check"
   end
 
   create_table "budgets", force: :cascade do |t|
@@ -199,6 +213,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_24_190000) do
   end
 
   add_foreign_key "accounts", "users"
+  add_foreign_key "ai_usage", "users"
   add_foreign_key "budgets", "users"
   add_foreign_key "entries", "budgets"
   add_foreign_key "entries", "categories"

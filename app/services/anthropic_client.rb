@@ -11,8 +11,10 @@ require "json"
 #   HTTP status.
 # - Tests swap the SDK for a fake (`sdk:`), so the suite never calls the API.
 #
-# S4-min (rate limit and AI cost cap) wraps this: AiBudget.check! must run
-# before every call.
+# S4-min (rate limit and AI cost cap): every call names the user and the
+# feature; AiBudget.check! runs before the request (raising AiBudget::Exceeded
+# with no request sent) and the response's usage is recorded after it.
+# Only the offline smoke script may pass `unmetered: true`.
 class AnthropicClient
   DEFAULT_MODEL = "claude-haiku-5-5".freeze
   MODEL_ENV = {
@@ -44,7 +46,12 @@ class AnthropicClient
 
   # One structured-output request. `schema` is a JSON Schema for the whole
   # answer; returns a Result whose `data` is the parsed JSON (a Hash).
-  def structured(feature:, use:, system:, user:, schema:, max_tokens: 2_048, effort: "low")
+  # `user` is the prompt text; `for_user` is who pays (AiBudget).
+  def structured(feature:, use:, system:, user:, schema:, for_user: nil, unmetered: false, max_tokens: 2_048,
+                 effort: "low")
+    raise ArgumentError, "a metered call needs for_user:" if for_user.nil? && !unmetered
+
+    AiBudget.check!(for_user, feature) unless unmetered
     model = self.class.model_for(use)
     started = monotonic
     message = sdk.messages.create(
@@ -56,6 +63,7 @@ class AnthropicClient
     )
     duration_ms = ((monotonic - started) * 1000).round
     usage = message.usage
+    AiBudget.record!(for_user, feature, input_tokens: usage&.input_tokens, output_tokens: usage&.output_tokens) unless unmetered
     log(feature:, model:, input: usage&.input_tokens, output: usage&.output_tokens, duration_ms:,
         outcome: message.stop_reason)
 

@@ -32,7 +32,7 @@ class AnthropicClientTest < ActiveSupport::TestCase
   def call(sdk, log: StringIO.new)
     AnthropicClient.new(sdk:, logger: Logger.new(log)).structured(
       feature: "categorize", use: :categorization, system: "sys", user: SECRET_PROMPT,
-      schema: { type: "object" }, max_tokens: 256
+      schema: { type: "object" }, max_tokens: 256, for_user: users(:one)
     )
   end
 
@@ -95,7 +95,8 @@ class AnthropicClientTest < ActiveSupport::TestCase
 
   test "the test environment never builds a real client" do
     error = assert_raises(AnthropicClient::NotConfigured) do
-      AnthropicClient.new.structured(feature: "categorize", use: :categorization, system: "s", user: "u", schema: {})
+      AnthropicClient.new.structured(feature: "categorize", use: :categorization, system: "s", user: "u", schema: {},
+                                     for_user: users(:one))
     end
     assert_includes error.message, "test environment"
   end

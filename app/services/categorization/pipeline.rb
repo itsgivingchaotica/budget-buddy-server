@@ -18,9 +18,12 @@ module Categorization
       def to_h = { memory:, rule:, ai:, needs_review: }
     end
 
-    def self.call(user:, scope:, ai: DisabledAi.new)
-      new(user:, scope:, ai:).call
+    def self.call(user:, scope:, ai: nil)
+      new(user:, scope:, ai: ai || ai_for(user)).call
     end
+
+    # The AI step for a user. DisabledAi until AI2 (Claude categorization).
+    def self.ai_for(_user) = DisabledAi.new
 
     def initialize(user:, scope:, ai:)
       @user = user
@@ -87,7 +90,14 @@ module Categorization
       items = rest.each_with_index.map do |(id, _, amount), index|
         { index:, merchant: keys[id], amount: amount.to_s("F"), account_purpose: purposes[id] }
       end
-      answers = Array(@ai.categorize(items:, allowed_slugs: categories.keys))
+      # S4-min: if the AI is unavailable or the daily cap is reached, the
+      # rows go to review; memory and rule results are still saved.
+      answers = begin
+        Array(@ai.categorize(items:, allowed_slugs: categories.keys))
+      rescue AiBudget::Exceeded, AnthropicClient::Error => e
+        Rails.logger.info("[ai] categorize skipped: #{e.class.name}")
+        []
+      end
 
       placed = {}
       answers.each do |answer|
