@@ -2,6 +2,7 @@
 #
 #   bin/rails demo:generate[dir]   write the synthetic CSVs + golden.csv (default tmp/demo)
 #   bin/rails demo:seed            import them for the demo user through the real pipeline
+#   bin/rails demo:reset           delete the demo user's imported data (development only)
 #   bin/rails demo:seed USER_EMAIL=you@example.com
 #                                  ...or into an existing (signed-in) user, so the app shows them
 #
@@ -22,6 +23,14 @@ namespace :demo do
     refuse_outside_dev!
     dir = demo_generator.write(args[:dir] || Rails.root.join("tmp/demo").to_s)
     puts "Wrote demo files to #{dir}"
+  end
+
+  desc "Delete demo.user@example.com's imported data (development only), so demo:seed can reload it"
+  task reset: :environment do
+    counts = Demo::Reset.call
+    puts "Deleted for #{Demo::Reset::DEMO_EMAIL}: #{counts}"
+  rescue Demo::Reset::Refused => e
+    abort e.message
   end
 
   desc "Import the demo data for the demo user (or USER_EMAIL) through the real import pipeline"
