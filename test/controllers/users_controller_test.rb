@@ -73,10 +73,23 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "destroy removes the caller's own record" do
+    # Users with transactions can't be deleted yet (accounts keep their
+    # history); that waits for a delete-account design. See PROGRESS.md.
+    transactions(:one_coffee).destroy!
     assert_difference("User.count", -1) do
       delete api_v1_user_url(@user), headers: auth_headers, as: :json
     end
     assert_response :no_content
+  end
+
+  test "destroy is 409 and deletes nothing when the user has transactions (known debt)" do
+    tables = [User, Budget, Account, FinancialProfile, Import, Transaction]
+    before = tables.map(&:count)
+    delete api_v1_user_url(@user), headers: auth_headers, as: :json
+    assert_response :conflict
+    assert_equal "user_has_data", response.parsed_body["error"]
+    assert_includes response.parsed_body["message"], "can't be deleted yet"
+    assert_equal before, tables.map(&:count)
   end
 
   test "a valid token without a provisioned user gets 403 on user endpoints" do

@@ -46,8 +46,17 @@ class Api::V1::UsersController < ApplicationController
   end
 
   # DELETE /users/1
+  # Known debt: a user whose accounts hold imports or transactions can't be
+  # deleted (accounts keep their history; foreign keys don't cascade). Until
+  # a delete-account flow is designed, that's a 409 and nothing is deleted
+  # (destroy! runs in one database transaction, so earlier steps roll back).
   def destroy
     @user.destroy!
+    head :no_content
+  rescue ActiveRecord::DeleteRestrictionError, ActiveRecord::InvalidForeignKey
+    render json: { error: "user_has_data",
+                   message: "This account still has imported transactions, so it can't be deleted yet." },
+           status: :conflict
   end
 
   private

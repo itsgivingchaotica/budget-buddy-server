@@ -1,0 +1,23 @@
+# T1/I2 (transactions). One per user, dated well away from the dates the
+# model tests use, so they never collide with test rows.
+one_coffee:
+  account: one_checking
+  posted_on: 2026-10-01
+  amount: -4.50
+  description: Fixture Coffee
+  normalized_description: FIXTURE COFFEE
+  base_key: 1111111111111111111111111111111111111111111111111111111111111111
+  occurrence: 1
+  categorization_source: none
+  needs_review: false
+
+two_coffee:
+  account: two_checking
+  posted_on: 2026-10-01
+  amount: -4.50
+  description: Fixture Coffee
+  normalized_description: FIXTURE COFFEE
+  base_key: 2222222222222222222222222222222222222222222222222222222222222222
+  occurrence: 1
+  categorization_source: none
+  needs_review: false

@@ -100,7 +100,19 @@ class TransactionTest < ActiveSupport::TestCase
   test "rows without external_id never collide on it (partial index)" do
     txn.save!
     assert txn(amount: "-1.00").save
-    assert_equal 2, @checking.transactions.where(external_id: nil).count
+    assert_equal 2, @checking.transactions.where(external_id: nil, posted_on: Date.new(2026, 11, 2)).count
+  end
+
+  test "rows with a bank id are keyed on it: different ids with identical content are both kept" do
+    assert txn(external_id: "BANK-1").save
+    assert txn(external_id: "BANK-2").save
+    assert txn.save, "a row without an id is keyed on content, separately"
+    assert_not txn(external_id: "BANK-1", amount: "-99.00").valid?
+  end
+
+  test "normalized descriptions are capped at 255 characters" do
+    t = txn(description: "ß" * 255).tap(&:save!)
+    assert_equal 255, t.normalized_description.length
   end
 
   test "categorization source and category must agree (model and database)" do

@@ -10,7 +10,9 @@ require "digest"
 # Duplicate detection (§2.3): `base_key` = SHA-256 of
 # "posted_on | amount in cents | normalized description", unique per account
 # with `occurrence` (the Nth identical row in one file). When the bank gives
-# a transaction id it is stored as `external_id`, also unique per account.
+# a transaction id, the row is keyed on it instead (`external_id`, unique per
+# account): its base_key is derived from the id, with occurrence 1, so two
+# different bank ids with identical content never block each other.
 class Transaction < ApplicationRecord
   SOURCES = %w[user memory rule ai transfer none].freeze
 
@@ -57,7 +59,16 @@ class Transaction < ApplicationRecord
 
       normalized = stripped
     end
-    normalized
+    # Upper-casing can lengthen some characters (e.g. "ß" -> "SS").
+    normalized[0, 255]
+  end
+
+  # The duplicate key for a row: from the bank id when there is one,
+  # otherwise from the row's content. Shared with the importer (I2).
+  def self.duplicate_key_for(posted_on:, amount:, normalized_description:, external_id: nil)
+    return Digest::SHA256.hexdigest("external_id|#{external_id}") if external_id.present?
+
+    base_key_for(posted_on:, amount:, normalized_description:)
   end
 
   def self.base_key_for(posted_on:, amount:, normalized_description:)
@@ -81,7 +92,7 @@ class Transaction < ApplicationRecord
     self.normalized_description = self.class.normalize_description(description)
     return if posted_on.nil? || amount.nil?
 
-    self.base_key = self.class.base_key_for(posted_on:, amount:, normalized_description:)
+    self.base_key = self.class.duplicate_key_for(posted_on:, amount:, normalized_description:, external_id:)
   end
 
   def category_matches_source

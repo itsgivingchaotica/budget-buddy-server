@@ -10,12 +10,13 @@ class Api::V1::AccountsController < ApplicationController
   def index
     accounts = current_user.accounts.order(:created_at, :id)
     accounts = accounts.active unless ActiveModel::Type::Boolean.new.cast(params[:include_archived])
-    render json: accounts.map { |account| account_json(account) }
+    latest = Transaction.where(account_id: accounts.select(:id)).group(:account_id).maximum(:posted_on)
+    render json: accounts.map { |account| account_json(account, latest[account.id]) }
   end
 
   # GET /accounts/1
   def show
-    render json: account_json(@account)
+    render json: account_json(@account, @account.transactions.maximum(:posted_on))
   end
 
   # POST /accounts
@@ -55,8 +56,10 @@ class Api::V1::AccountsController < ApplicationController
     params.require(:account).permit(:name, :kind, :purpose, :purpose_note)
   end
 
-  # `data_through` per account arrives with transactions (I2).
-  def account_json(account)
+  # `data_through` (I2) = the latest posted_on in the account, computed,
+  # not stored (plan §2.2). Null until something is imported.
+  def account_json(account, data_through = nil)
     account.as_json(only: %i[id name kind purpose purpose_note archived_at created_at updated_at])
+           .merge("data_through" => data_through)
   end
 end
