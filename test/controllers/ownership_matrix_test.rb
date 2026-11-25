@@ -65,7 +65,7 @@ class OwnershipMatrixTest < ActionDispatch::IntegrationTest
 
   # A fingerprint of everything the rows could touch.
   def snapshot
-    [User, Budget, Entry, Tag, Category, Account, Import, Transaction].to_h do |model|
+    [User, Budget, Entry, Tag, Category, Account, Import, Transaction, MerchantRule].to_h do |model|
       [model.name, model.order(:id).map { |r| r.attributes.except("updated_at") }]
     end.merge("EntriesTags" => Entry.order(:id).map { |e| e.tag_ids.sort })
   end
