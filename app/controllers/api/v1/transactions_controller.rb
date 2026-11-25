@@ -38,7 +38,8 @@ class Api::V1::TransactionsController < ApplicationController
     return render json: { error: "category_required" }, status: :unprocessable_entity unless attrs.key?(:category)
 
     if attrs[:category].blank?
-      @transaction.update!(category: nil, categorization_source: "none", confidence: nil, needs_review: false)
+      # Cleared rows go back to review; categorization isn't re-run (PO, 2026-11-24).
+      @transaction.update!(category: nil, categorization_source: "none", confidence: nil, needs_review: true)
       return render json: transaction_json(@transaction)
     end
 

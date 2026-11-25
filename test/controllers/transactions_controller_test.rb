@@ -69,10 +69,12 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal [@groceries.id, "user", false], [@nov[1].category_id, @nov[1].categorization_source, @nov[1].needs_review]
   end
 
-  test "PATCH with a null category makes the row uncategorized" do
+  test "PATCH with a null category makes the row uncategorized and flags it for review, without re-categorizing" do
     patch api_v1_transaction_url(@nov[0]), params: { transaction: { category: nil } }, headers: auth_headers, as: :json
     assert_response :success
-    assert_equal [nil, "none"], @nov[0].reload.then { |t| [t.category_id, t.categorization_source] }
+    assert_equal [nil, "none", nil, true],
+                 @nov[0].reload.then { |t| [t.category_id, t.categorization_source, t.confidence, t.needs_review] }
+    assert_equal true, response.parsed_body["needs_review"]
   end
 
   test "PATCH changes only the category" do

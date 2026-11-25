@@ -7,8 +7,8 @@ class Api::V1::ImportsController < ApplicationController
 
   def create
     account = current_user.accounts.find(params[:account_id])
-    import, result = CsvImport::Importer.call(account:, file: params[:file])
-    render json: import_json(import, result), status: :created
+    import, result, categorized = CsvImport::Importer.call(account:, file: params[:file])
+    render json: import_json(import, result).merge("categorized" => categorized.to_h), status: :created
   rescue CsvImport::Importer::Rejected => e
     render json: { error: e.code, message: e.message }, status: :unprocessable_entity
   end

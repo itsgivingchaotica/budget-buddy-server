@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_24_180100) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_24_190000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -128,6 +128,20 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_24_180100) do
     t.check_constraint "status::text = ANY (ARRAY['processing'::character varying, 'completed'::character varying, 'failed'::character varying]::text[])", name: "imports_status_check"
   end
 
+  create_table "merchant_rules", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "merchant_key", null: false
+    t.bigint "category_id", null: false
+    t.integer "hits", default: 0, null: false
+    t.datetime "last_used_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category_id"], name: "index_merchant_rules_on_category_id"
+    t.index ["user_id", "merchant_key"], name: "index_merchant_rules_on_user_id_and_merchant_key", unique: true
+    t.check_constraint "hits >= 0", name: "merchant_rules_hits_check"
+    t.check_constraint "length(merchant_key::text) >= 1 AND length(merchant_key::text) <= 255", name: "merchant_rules_key_length_check"
+  end
+
   create_table "tags", force: :cascade do |t|
     t.string "name"
     t.datetime "created_at", null: false
@@ -192,6 +206,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_24_180100) do
   add_foreign_key "entries_tags", "users"
   add_foreign_key "financial_profiles", "users"
   add_foreign_key "imports", "accounts"
+  add_foreign_key "merchant_rules", "categories"
+  add_foreign_key "merchant_rules", "users"
   add_foreign_key "tags", "categories"
   add_foreign_key "transactions", "accounts"
   add_foreign_key "transactions", "categories"

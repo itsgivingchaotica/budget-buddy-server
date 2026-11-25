@@ -146,4 +146,20 @@ class ImportsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 10_000, body["inserted_count"]
     assert_operator elapsed, :<, 5.0, "took #{elapsed.round(2)} s"
   end
+
+  test "imported rows are categorized: memory, then rules, the rest to review (AI1)" do
+    groceries = Category.create!(name: "Groceries", slug: "groceries", kind: "spending", fixed_variable: "variable", active: true, position: 1)
+    income = Category.create!(name: "Income", slug: "income", kind: "income", active: true, position: 2)
+    rent = Category.create!(name: "Rent", slug: "rent", kind: "spending", fixed_variable: "fixed", active: true, position: 3)
+    users(:one).merchant_rules.create!(merchant_key: "CORNER GROCERY", category: groceries)
+    body = import!(HEADER + "2026-11-01,ACME PAYROLL,1850.00\n2026-11-02,Corner Grocery #214,-64.18\n" \
+                            "2026-11-03,Rent,-1200.00\n2026-11-04,ZQX Holdings,-9.99\n")
+    assert_equal({ "memory" => 1, "rule" => 2, "ai" => 0, "needs_review" => 1 }, body["categorized"])
+    rows = @account.transactions.where(import_id: body["id"]).index_by(&:description)
+    assert_equal [income.id, "rule"], rows["ACME PAYROLL"].then { |t| [t.category_id, t.categorization_source] }
+    assert_equal [groceries.id, "memory"], rows["Corner Grocery #214"].then { |t| [t.category_id, t.categorization_source] }
+    assert_equal rent.id, rows["Rent"].category_id
+    assert rows["ZQX Holdings"].needs_review
+    assert_equal "none", transactions(:one_coffee).reload.categorization_source, "rows from other imports untouched"
+  end
 end

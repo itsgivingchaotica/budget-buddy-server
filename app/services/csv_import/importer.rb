@@ -40,7 +40,7 @@ module CsvImport
       @file = file
     end
 
-    # Returns [import, parse_result]; raises Rejected for a file that can't
+    # Returns [import, parse_result, categorization_summary]; raises Rejected for a file that can't
     # be imported at all (nothing is stored then).
     def call
       check_account_and_file!
@@ -63,7 +63,10 @@ module CsvImport
           data_through: dates.max
         )
       end
-      [import, result]
+      # AI1 (rules-based categorization), after the import is saved, so a
+      # categorization problem never loses imported rows.
+      categorized = Categorization::Pipeline.call(user: @account.user, scope: import.transactions)
+      [import, result, categorized]
     end
 
     private

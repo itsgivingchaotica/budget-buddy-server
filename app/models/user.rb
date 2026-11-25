@@ -7,6 +7,8 @@ class User < ApplicationRecord
   # user_id column, so ownership can't drift.
   has_many :imports, through: :accounts
   has_many :transactions, through: :accounts
+  # AI1: merchant memory (merchant -> category), written by AI3.
+  has_many :merchant_rules, dependent: :destroy
 
   # Users created from a Kinde identity (S2) take names and email from Kinde,
   # which may not provide them; legacy users still need all three.
