@@ -5,6 +5,9 @@ Rails.application.routes.draw do
       resources :accounts, only: %i[index show create update destroy] do
         resources :imports, only: %i[create] # I2
       end
+      # DM-3 (category budgets)
+      put "category_budgets", to: "category_budgets#replace_month"
+      resources :category_budgets, only: %i[index update], param: :category_slug
       # C2b: undo a category correction
       resources :category_corrections, only: [] do
         post :undo, on: :member

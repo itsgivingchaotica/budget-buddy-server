@@ -1250,3 +1250,11 @@ So the phone was already signed out of Kinde locally, while the app kept its use
 - **Goal saved amount / debt balance computed, not stored:** saved = starting amount + set-asides; debt balance = latest balance update (else the starting balance). No `current_balance` column (differs from plan §2.2), so undo-by-delete can't drift.
 - **Linking a goal contribution to a transfer: not in step 1** (on the cut list; added later only if time allows).
 - **`POST /goals` built** (owner-scoped, tested) for PL2 and demo data; the app shows no "+ Add goal" in the MVP.
+
+### DM-3 (category budgets) — done, uncommitted (2026-11-26)
+
+- Branch `feature/category-budgets` (server). Migration `20261126100000_create_category_budgets.rb` (additive; rollback tested). Details in `ARCHITECTURE.md`.
+- `plan_proposal_id` (plan §2.2) is left for PL1, when `plan_proposals` exists (additive then).
+- "This month" uses the user's time zone (`UserClock`), so the Plan screen's "change from this month" matches the user's calendar, not UTC's.
+- Tests: `category_budget_test.rb` (6: effective-from rule incl. replacement and before-first-row, per-category latest row, other users, flexible only, 1st / non-negative / unique in model and database, UserClock month boundary) and `category_budgets_test.rb` (7: listing with amounts in effect, bad month, bulk all-or-nothing, same-month update, single change in the user's zone, refusals, other users); ownership matrix: unknown category row, snapshot includes `category_budgets`, not-provisioned 403. Server suite **448 pass**. Mutation checks caught: oldest row picked instead of latest; flexible-only check removed.
+- **PO approval (2026-11-26):** DM-3 approved. `UserClock` recorded in `ARCHITECTURE.md` as the single source of today / this week / this month for every feature. **Pending, not lost:** `GET /category_budgets/:slug/context` (SCREENS_PLAN §3.1: weekly equivalent, 3-month average, spent this month) depends on AN1, so it's built in step 3 (analytics) or step 5 (Plan tab).

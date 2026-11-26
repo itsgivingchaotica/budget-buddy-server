@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_25_120100) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_26_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -74,6 +74,23 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_25_120100) do
     t.check_constraint "kind::text = ANY (ARRAY['spending'::character varying, 'income'::character varying, 'transfer'::character varying, 'legacy'::character varying]::text[])", name: "categories_kind_check"
     t.check_constraint "need_want IS NULL OR (need_want::text = ANY (ARRAY['need'::character varying, 'want'::character varying]::text[]))", name: "categories_need_want_check"
     t.check_constraint "recurrence_label IS NULL OR (recurrence_label::text = ANY (ARRAY['one_time'::character varying, 'recurring'::character varying]::text[]))", name: "categories_recurrence_label_check"
+  end
+
+  create_table "category_budgets", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "category_id", null: false
+    t.string "period", default: "month", null: false
+    t.decimal "amount", precision: 12, scale: 2, null: false
+    t.date "effective_from", null: false
+    t.string "source", default: "user", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category_id"], name: "index_category_budgets_on_category_id"
+    t.index ["user_id", "category_id", "effective_from"], name: "index_category_budgets_on_user_category_month", unique: true
+    t.check_constraint "EXTRACT(day FROM effective_from) = 1::numeric", name: "category_budgets_first_of_month_check"
+    t.check_constraint "amount >= 0::numeric", name: "category_budgets_amount_check"
+    t.check_constraint "period::text = 'month'::text", name: "category_budgets_period_check"
+    t.check_constraint "source::text = ANY (ARRAY['user'::character varying, 'coach'::character varying]::text[])", name: "category_budgets_source_check"
   end
 
   create_table "category_corrections", force: :cascade do |t|
@@ -257,6 +274,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_25_120100) do
   add_foreign_key "accounts", "users"
   add_foreign_key "ai_usage", "users"
   add_foreign_key "budgets", "users"
+  add_foreign_key "category_budgets", "categories"
+  add_foreign_key "category_budgets", "users"
   add_foreign_key "category_corrections", "categories", column: "new_category_id"
   add_foreign_key "category_corrections", "transactions"
   add_foreign_key "category_corrections", "users"
