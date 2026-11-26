@@ -39,6 +39,11 @@ class AnthropicClient
     ENV[MODEL_ENV.fetch(use)].presence || DEFAULT_MODEL
   end
 
+  # open_telemetry: false: no tracing spans, and the SDK ignores the
+  # ANTHROPIC_OPEN_TELEMETRY_* variables, one of which would record prompts
+  # and answers in spans (no financial text leaves through traces).
+  def self.sdk_options = { max_retries: MAX_RETRIES, timeout: TIMEOUT_SECONDS, open_telemetry: false }
+
   def initialize(sdk: nil, logger: Rails.logger)
     @sdk = sdk
     @logger = logger
@@ -95,7 +100,7 @@ class AnthropicClient
       key = ENV["ANTHROPIC_API_KEY"].presence
       raise NotConfigured, "ANTHROPIC_API_KEY is not set" if key.nil?
 
-      Anthropic::Client.new(api_key: key, max_retries: MAX_RETRIES, timeout: TIMEOUT_SECONDS)
+      Anthropic::Client.new(api_key: key, **self.class.sdk_options)
     end
   end
 

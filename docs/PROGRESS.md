@@ -1272,3 +1272,18 @@ So the phone was already signed out of Kinde locally, while the app kept its use
 - Tests: `recurrence_schedule_test.rb` (10, hand-calculated: the 31st through Feb/Apr, leap year Feb 29, `day_of_month` 31 starting Nov 30, every 3 months, weekly/biweekly/every 4 weeks, yearly Feb 29, one-off and `ends_on`, before the first date, next/last lookups a year out, bad input), `obligation_test.rb` (8: day default, fixed only, amounts and schedules, consistency with `day_of_month`, own account only, database CHECKs incl. NULL day, payment rules incl. paying early, FK restrict + archive, monthly total), `obligations_test.rb` (7: create with injected owner/source ignored, refusals, list summary and all four chips, mark twice = one row / unmark restores due / non-occurrence 422 / future 422, `paid_on` in the user's zone, `/due` with ranges and archived excluded, edit + archive). Ownership matrix: 7 rows (show/update/archive/pay/unpay another user's bill → 404, other user's account → 404, unknown category → 422), snapshot includes both tables, not-provisioned 403, lists empty for the caller. Server suite **480 pass**. Mutation checks (10) all caught, after adding the archived-in-`/due` check.
 
 - **PO approval (2026-11-26):** OB1 approved, including all six points above. **For PL1 (plan drafting):** the plan's committed-bills total must use `Bills.monthly_total` (the same monthly equivalents), so the drafted plan and the Plan tab always agree.
+
+### Log filtering — done, uncommitted (2026-11-26)
+
+- Found while building G1; own PR from `main` (branch `fix/log-filtering`), merged before G1 (PO). Ground rule: no financial text in logs. Details in `ARCHITECTURE.md`.
+- **What leaked, and the fix:**
+  1. **Request parameters** (all environments at `info`): bill names and amounts (OB1), budget amounts (DM-3), transaction descriptions on edits. → Added to `filter_parameters`.
+  2. **SQL log** (development and test, at `debug`): bound values were already hidden by column name, but values written into the SQL text weren't: CSV import bulk inserts (descriptions, amounts), `update_all`, the email lookup. → SQL logging off; `LOG_SQL=1` turns it on outside production.
+  3. **Exception messages** (all environments): a database error's message includes the whole failing row; parse errors and `BigDecimal` errors quote input. → Unexpected errors are logged as class + constraint + place; the client gets a bare status.
+  4. **Malformed JSON bodies** (development, at `debug`): Rails logs the raw body. → Answered with a 400 before Rails parses it.
+  5. **Claude requests and responses:** no leak found (only metadata was logged; the SDK has no request logger; OpenTelemetry has no exporter here). Hardened: tracing off in the client, so environment variables can't enable content capture.
+- Not logs, so not changed: `imports.row_errors` (stored, shown to the owner), and error messages returned in API responses to the caller.
+- The old bearer-token log test captured nothing (it swapped `Rails.logger`, which controllers don't re-read); the tests now attach to the real logger and check the capture saw the request.
+- Tests: 6 new in `cors_and_logging_test.rb` (parameters incl. query string, SQL, exceptions incl. a real PostgreSQL error, malformed JSON, Claude tracing, plus the fixed token test and the filter list). Server suite **486 pass**. Mutation checks (6) all caught.
+- **Owner task:** `bin/rails log:clear` to remove what earlier logs held.
+
