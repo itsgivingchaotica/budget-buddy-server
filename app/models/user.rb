@@ -17,6 +17,8 @@ class User < ApplicationRecord
   has_many :category_budgets
   # OB1: bills (archived, never deleted).
   has_many :obligations
+  # G1: goals (archived, never deleted).
+  has_many :goals
 
   # Users created from a Kinde identity (S2) take names and email from Kinde,
   # which may not provide them; legacy users still need all three.

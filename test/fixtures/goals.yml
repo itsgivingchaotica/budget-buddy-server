@@ -1,0 +1,9 @@
+# G1 (goals). `two_trip` belongs to users(:two), for the ownership matrix.
+two_trip:
+  user: two
+  goal_type: purchase
+  name: Trip
+  target_amount: 900.00
+  starting_balance: 0
+  status: active
+  source: user

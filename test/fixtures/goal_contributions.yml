@@ -1,0 +1,5 @@
+two_trip_first:
+  goal: two_trip
+  kind: set_aside
+  amount: 50.00
+  contributed_on: 2026-11-01
