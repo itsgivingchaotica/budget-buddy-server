@@ -10,6 +10,8 @@ Rails.application.routes.draw do
       resources :category_budgets, only: %i[index update], param: :category_slug do
         get :context, on: :member
       end
+      # W1 (Home outlook)
+      get "outlook/week", to: "outlook#week"
       # AN2 (spending analytics)
       get "analytics/summary", to: "analytics#summary"
       get "analytics/budget_vs_actual", to: "analytics#budget_vs_actual"

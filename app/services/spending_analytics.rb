@@ -47,12 +47,12 @@ module SpendingAnalytics
       c = categories[category_id]
       next if c.nil?
 
-      if c.spending? then by_category[c] = [-sum, ZERO].max
+      if c.spending? then by_category[c] = [ZERO - sum, ZERO].max
       elsif c.income? then income += sum
       end
     end
     counted = scope.left_outer_joins(:category).where("categories.id IS NULL OR categories.kind IN ('spending','income')").count
-    { by_category:, uncategorized: -outflow_uncategorized, income:, count: counted }
+    { by_category:, uncategorized: ZERO - outflow_uncategorized, income:, count: counted }
   end
 
   # The data the user has: first row, and data_through = the earliest of each
