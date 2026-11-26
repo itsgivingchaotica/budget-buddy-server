@@ -81,6 +81,12 @@ class OwnershipMatrixTest < ActionDispatch::IntegrationTest
     "goals#undo other's contribution" =>
                                     [:delete, -> { contribution_api_v1_goal_url(goals(:two_trip), contribution_id: goal_contributions(:two_trip_first).id) }, nil, :not_found],
 
+    # --- analytics (AN2) and the budget context: no ids; always the caller's -------------
+    "analytics#summary unknown category" =>
+                                    [:get,    -> { api_v1_analytics_summary_url(from: "2026-11-01", to: "2026-11-02", category: "no-such-category") }, nil, :unprocessable_entity],
+    "category_budgets#context unknown category" =>
+                                    [:get,    -> { context_api_v1_category_budget_url("no-such-category") }, nil, :unprocessable_entity],
+
     # --- category corrections (C2b) ---------------------------------------------------
     "category_corrections#undo other" =>
                                     [:post,   -> { undo_api_v1_category_correction_url(category_corrections(:two_fix)) }, nil, :not_found],
@@ -179,7 +185,8 @@ class OwnershipMatrixTest < ActionDispatch::IntegrationTest
   test "a valid token without a provisioned user gets 403 on every scoped resource" do
     headers = auth_headers("sub" => "kp_not_provisioned")
     [api_v1_budgets_url, api_v1_entries_url, api_v1_tags_url, api_v1_users_url, api_v1_accounts_url,
-     api_v1_transactions_url, api_v1_transfer_links_url, api_v1_category_budgets_url, api_v1_obligations_url, api_v1_goals_url].each do |url|
+     api_v1_transactions_url, api_v1_transfer_links_url, api_v1_category_budgets_url, api_v1_obligations_url, api_v1_goals_url,
+     api_v1_analytics_budget_vs_actual_url, context_api_v1_category_budget_url("groceries")].each do |url|
       get url, headers: headers, as: :json
       assert_response :forbidden, url
     end

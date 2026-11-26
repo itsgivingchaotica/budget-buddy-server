@@ -1300,7 +1300,7 @@ So the phone was already signed out of Kinde locally, while the app kept its use
 - Tests: `goal_test.rb` (5: per-type fields, saved/remaining, debt balance by date and undo, contribution rules incl. the user's zone, database CHECKs + FK restrict), `goals_test.rb` (6: create each type with injected owner/source ignored, list order and status filter, set aside + undo, balance update + refusals, edit/archive, another user's contribution through my own goal → 404). Ownership matrix: 4 rows (show/update/contribute/undo another user's goal → 404), snapshot includes both tables, not-provisioned 403, lists empty. Server suite **496 pass**. Mutation checks (11) all caught.
 - **PO approval (2026-11-26):** G1 approved, all five points. The log-filter fix found while building it goes in its own PR, merged first.
 
-### G2 (goal and debt maths) — done, uncommitted (2026-11-26)
+### G2 (goal and debt maths) — done, merged (2026-11-26)
 
 - G1 merged to `main`. Branch `feature/goal-maths` (server). No migration. Details in `ARCHITECTURE.md`.
 - **Definitions I chose (the specs name the figures, not the formulas; for the decision log):**
@@ -1315,9 +1315,37 @@ So the phone was already signed out of Kinde locally, while the app kept its use
 
 - **PO approval (2026-11-26):** G2 approved, including all six definitions.
 
+#### G2 understanding check (D-027; written after the merge, 2026-11-26)
+
+**Core files:** `app/services/debt_calculator.rb` (the month-by-month debt schedule), `app/services/goal_calculator.rb` (weeks, weekly need, on track, milestones; calls the debt calculator for debt goals), `app/services/user_clock.rb` (the user's today, week start and month).
+
+**DebtCalculator, in plain words:** start from today's balance. Each month, work out the interest (balance × APR ÷ 1200, rounded to the cent, half up), add it to the balance, then take off the payment (or just what's left, in the last month). Repeat until the balance is zero. The number of months gives the payoff month (counted from next month); the interest added up gives the total interest. If the first month's interest is already as big as the payment, the debt can never be paid off, so it stops at once and says so; it also gives up after 50 years. The what-if runs the same loop with a bigger payment and reports the difference in interest and months.
+
+**GoalCalculator, in plain words:** it first finds the user's current week (from their own week start and time zone). For a dated saving goal it counts the weeks left, including this one and the target date's week, and takes what was still to save **at the start of this week** divided by those weeks, rounded up: that's the weekly amount, and it stays fixed until next week. Money set aside this week only lowers "still needed this week". On track compares what's saved with an even plan that runs from the goal's first week to the target week. Undated goals get progress and milestones only. For debt goals it uses the latest balance update and asks DebtCalculator for interest, payoff and the what-if; on track compares that balance with where the scheduled payments since the goal began would have brought it. Each milestone (25/50/75/100%) is either reached (the date the money set aside, or the balance, first crossed it) or projected (the weekly amount from now on, or the debt schedule).
+
+**Questions the owner should be able to answer:**
+1. A goal needs $62 a week. On Wednesday you set aside $20. What happens to `needed_per_week` and to `still_needed_this_week`, and why?
+2. A $5,000 card at 22% APR has a $90 monthly payment. What does the API return for its payoff, and why doesn't the calculator loop forever?
+3. You created a debt goal in August and never updated its balance. Why does it show "Behind" now, and what single action makes it "On track" if you've been paying?
+
 ### D-027 (deterministic first, AI as assistant) — approved changes (PO, 2026-11-26)
 
 1. **"By coach" marker and filter** for rows Claude categorized without review: built as a **small follow-up PR to C2b** (Activity), after step 3, because it belongs on the Activity screens rather than the Plan tab.
 2. **Understanding check per PR:** every PR report lists the 2–3 core-logic files, a plain-language walkthrough and 3 questions the owner should be able to answer. Started with the G2 PR.
 3. **Figures audit rake task** (Home, Plan and the coach's tools agree for the demo user): built in step 9 (Q1).
 - `DESIGN_DECISIONS.md` (D-027) and `GLOSSARY.md` updated by the owner; committed with G2. `CLAUDE.md` (top level, not in git) has the D-027 section and refreshed status lines.
+
+### AN1/AN2 (spending analytics) + budget context — done (2026-11-26)
+
+- G2 merged to `main`. Branch `feature/spending-analytics` (server). No migration. Details in `ARCHITECTURE.md`.
+- **Choices and deviations (for the decision log):**
+  1. **Uncategorized rows count only money out.** Money in on an uncategorized row could be pay waiting for review; netting it would hide spending. **Differs from SPEC_LEFT_TO_SPEND §3.2**, which nets every flexible-or-uncategorized row together; needs a decision before W1 (Home) so Home and Plan agree.
+  2. **"Near" = 90%** of a budget spent (SPEC_COACH_QA names the status, not the threshold). A $0 budget with spending is "over".
+  3. **Covered month** = the data starts on or before its 1st and runs through its last day (data_through = the earliest of the accounts' latest rows). Uncovered months are left out of averages, never $0.
+  4. **`unbudgeted`** lines in budget vs actual (flexible categories with spending but no budget), so totals add up; SCREENS_PLAN §3 lists only budgeted rows + uncategorized.
+  5. **Range limits:** the API allows 366 days (plan AN2); the service allows 24 months for the coach (SPEC_COACH_QA §5).
+  6. **Context endpoint takes an optional `amount`**, so the sheet's "About per week" follows the amount being edited without the app doing maths (SCREENS_PLAN §3.1 says the figure comes from the API).
+  7. "Change" percent is to one decimal; none when the previous period had no spending.
+- **PO decisions (2026-11-26):** (1) uncategorized rows count only money out **for both Home (W1) and Plan**; the owner amends SPEC_LEFT_TO_SPEND §3.2 and adds worked example 10 (+$500 uncategorized deposit and −$18 uncategorized spending → spent includes $18); W1 is built to that rule. (2) Unbudgeted lines stay; the Plan tab shows them in a "No budget yet" group, and tapping one opens the change-a-budget sheet at $0 (owner updates SCREENS_PLAN). (3)–(5) accepted as described.
+- Tests: `test/support/spending_scenario.rb` (one hand-made history, described in its header), `spending_analytics_test.rb` (14: summary with refunds/transfers/future/archived, a range splitting a transfer pair, previous period and change, one category, before the data, top-12 + everything else, merchant filter, range checks, budget vs actual for Nov/Oct/Aug, averages, covered months, median, context, other users), `analytics_test.rb` (6: shapes, validation incl. the 366-day edge, default month, context and refusals, another user). Ownership matrix: 2 rows, not-provisioned 403 for the new lists. Server suite **543 pass**. Mutation checks (13): 12 caught; "budget in effect at month end" survives because budgets always start on a 1st, so it's the same rule.
+
