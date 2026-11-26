@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_24_210000) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_25_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -202,6 +202,27 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_24_210000) do
     t.check_constraint "occurrence >= 1", name: "transactions_occurrence_check"
   end
 
+  create_table "transfer_links", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "outflow_transaction_id", null: false
+    t.bigint "inflow_transaction_id", null: false
+    t.string "status", default: "suggested", null: false
+    t.integer "days_apart", null: false
+    t.jsonb "previous_state"
+    t.datetime "confirmed_at"
+    t.datetime "rejected_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["inflow_transaction_id"], name: "index_transfer_links_active_inflow", unique: true, where: "((status)::text = ANY ((ARRAY['suggested'::character varying, 'confirmed'::character varying])::text[]))"
+    t.index ["inflow_transaction_id"], name: "index_transfer_links_on_inflow"
+    t.index ["outflow_transaction_id", "inflow_transaction_id"], name: "index_transfer_links_on_pair", unique: true
+    t.index ["outflow_transaction_id"], name: "index_transfer_links_active_outflow", unique: true, where: "((status)::text = ANY ((ARRAY['suggested'::character varying, 'confirmed'::character varying])::text[]))"
+    t.index ["user_id"], name: "index_transfer_links_on_user_id"
+    t.check_constraint "days_apart >= 0 AND days_apart <= 3", name: "transfer_links_days_apart_check"
+    t.check_constraint "outflow_transaction_id <> inflow_transaction_id", name: "transfer_links_distinct_rows_check"
+    t.check_constraint "status::text = ANY (ARRAY['suggested'::character varying, 'confirmed'::character varying, 'rejected'::character varying]::text[])", name: "transfer_links_status_check"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "first_name"
     t.string "last_name"
@@ -229,4 +250,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_24_210000) do
   add_foreign_key "transactions", "accounts"
   add_foreign_key "transactions", "categories"
   add_foreign_key "transactions", "imports", column: ["import_id", "account_id"], primary_key: ["id", "account_id"], name: "fk_transactions_import_same_account"
+  add_foreign_key "transfer_links", "transactions", column: "inflow_transaction_id"
+  add_foreign_key "transfer_links", "transactions", column: "outflow_transaction_id"
+  add_foreign_key "transfer_links", "users"
 end
