@@ -22,9 +22,11 @@ jobs:
     services:
       postgres:
         image: postgres:17
+        # A throwaway database that exists only during this job; it takes
+        # local connections without credentials, so none is stored here.
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
         ports:
           - 5432:5432
         options: >-
@@ -35,7 +37,7 @@ jobs:
 
     env:
       RAILS_ENV: test
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/bb_server_test
+      DATABASE_URL: postgres://postgres@localhost:5432/bb_server_test
 
     steps:
       - uses: actions/checkout@v4
