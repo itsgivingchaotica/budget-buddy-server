@@ -1226,3 +1226,35 @@ So the phone was already signed out of Kinde locally, while the app kept its use
 - Paths fixed: inside the docs, `bb-server/docs/…` → `docs/…`; 11 client source comments now point to `bb-server/docs/product/…`; the top-level `CLAUDE.md` (still outside both repos) points to `bb-server/docs/…`. One line added to each README pointing to the docs (both READMEs otherwise unchanged until the end of M2).
 - Before committing, the docs were scanned for private data: no emails, names, keys or tokens; the Mac's LAN IP (2 mentions in PROGRESS) was replaced with "the Mac's LAN IP".
 - Branches: server `chore/move-docs-into-server`, client `chore/docs-pointer` (both from `main`), one small PR each. Left untouched: `project-knowledge/2026-11-22/` (a dated snapshot).
+
+### C9 (welcome and account screens) — built, uncommitted (2026-11-26)
+
+- Client branch `feature/welcome-and-account` from `main`. Spec `docs/product/SCREENS_WELCOME.md` (D-023, D-020). Details in `ARCHITECTURE.md`. No server change.
+- **SVG:** `react-native-svg` (already installed and linked natively) with `SvgXml`; no Metro SVG transformer, no PNG export.
+- **Sign in vs cancel:** Kinde SDK 1.3.1's `login()`/`register()` return `null` both on cancel and on failure (the error is swallowed and logged). The Welcome screen therefore checks Kinde is reachable first (`GET <domain>/.well-known/openid-configuration`, 5 s timeout); unreachable → inline "Couldn't open sign-in…", no browser. A `null` result is treated as a cancel (no message). `register()` exists, so Create an account uses it.
+- **Account sheet rows:** the spec text lists "Week starts on" and "Time zone"; the design screenshot also shows "Data: Demo data", which isn't built (spec text followed). Profile values come from `GET /me` (it already returns `profile`), loaded when the sheet opens.
+- **Assets:** app icon `assets/images/app-icon-1024.png`; splash per §6 (PO added `assets/images/splash-mascot.png`): `expo-splash-screen` plugin, Birch `#F6F1E7`, image 200 pt wide, light only, config-only. **Deleted** (old login images, unused): `assets/images/budget-buddy.png` (bear on a banknote), `assets/images/home-screen-design.png` (people illustration). `squirrelbuddy.png` kept (used by frozen legacy code). The old `splash.png` (Expo's default placeholder) and `icon.png` are now unused but kept.
+- iOS project updated with `expo prebuild` (no `--clean`, signing team kept) + `pod install`; one rebuild from Xcode needed for the icon and splash.
+- **Owner task (demo checklist): brand Kinde's hosted pages** in the Kinde dashboard → Design: logo `mascot-512.png`, primary button colour Pine `#2F5D46`, background Birch `#F6F1E7`, business name "Budget Buddy".
+- Tests: `__tests__/welcomeAndAccount.test.tsx` (14: routing rule; sign-in flow incl. unreachable, cancel, failing `/me`; reachability; Welcome renders name, both buttons, both legal links; offline message and buttons usable again; sign-up → Activity with 0 accounts; Terms note; account helpers and defaults; account sheet rows and Log out; Home's account button, no separate Log out), `__tests__/brandAssets.test.ts` (hero + mascot synced with assets). Client suite **63/63**, TypeScript **48**. Mutation checks caught: routing rule, reachability check, cancel handling.
+- `CLAUDE.md` iPhone note updated (SDK 54).
+- **App display name "Budget Buddy" (PO, 2026-11-26):** after logout, iOS showed "'bbclient' Wants to Use 'kinde.com' to Sign In". The prompt is iOS's standard consent for any web sign-in/sign-out session (Kinde opens one for both); the odd part was the starter name. `name` in `app.config.ts` is now "Budget Buddy" (home-screen label and the prompt). Slug (`bb-client`), Xcode project (`bbclient`), bundle ID (`app.budgetbuddy.mvp.dev`) and signing team unchanged. Not done (option B, offered): an ephemeral browser session, which would remove the prompt but make users re-enter credentials every sign-in.
+- **C9 phone acceptance passed (PO, 2026-11-26);** committed on client `feature/welcome-and-account` as `face8a7`.
+
+## Milestone 2 (handoff #06)
+
+### Step 1 decisions (PO, 2026-11-26)
+
+- Handoff #06 read; step 1 = DM-3 (category budgets), OB1 (bills), G1 (goals), as **three server PRs** (approved).
+- **Budgets only for flexible categories** (active spending, labelled variable): fixed categories are bills; Income and Transfers have no budget. Others → 422.
+- **Goal saved amount / debt balance computed, not stored:** saved = starting amount + set-asides; debt balance = latest balance update (else the starting balance). No `current_balance` column (differs from plan §2.2), so undo-by-delete can't drift.
+- **Linking a goal contribution to a transfer: not in step 1** (on the cut list; added later only if time allows).
+- **`POST /goals` built** (owner-scoped, tested) for PL2 and demo data; the app shows no "+ Add goal" in the MVP.
+
+### DM-3 (category budgets) — done, uncommitted (2026-11-26)
+
+- Branch `feature/category-budgets` (server). Migration `20261126100000_create_category_budgets.rb` (additive; rollback tested). Details in `ARCHITECTURE.md`.
+- `plan_proposal_id` (plan §2.2) is left for PL1, when `plan_proposals` exists (additive then).
+- "This month" uses the user's time zone (`UserClock`), so the Plan screen's "change from this month" matches the user's calendar, not UTC's.
+- Tests: `category_budget_test.rb` (6: effective-from rule incl. replacement and before-first-row, per-category latest row, other users, flexible only, 1st / non-negative / unique in model and database, UserClock month boundary) and `category_budgets_test.rb` (7: listing with amounts in effect, bad month, bulk all-or-nothing, same-month update, single change in the user's zone, refusals, other users); ownership matrix: unknown category row, snapshot includes `category_budgets`, not-provisioned 403. Server suite **448 pass**. Mutation checks caught: oldest row picked instead of latest; flexible-only check removed.
+- **PO approval (2026-11-26):** DM-3 approved. `UserClock` recorded in `ARCHITECTURE.md` as the single source of today / this week / this month for every feature. **Pending, not lost:** `GET /category_budgets/:slug/context` (SCREENS_PLAN §3.1: weekly equivalent, 3-month average, spent this month) depends on AN1, so it's built in step 3 (analytics) or step 5 (Plan tab).

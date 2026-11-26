@@ -13,6 +13,8 @@ class User < ApplicationRecord
   has_many :transfer_links
   # C2b: category corrections, for Undo.
   has_many :category_corrections
+  # M2 plan: DM-3 category budgets.
+  has_many :category_budgets
 
   # Users created from a Kinde identity (S2) take names and email from Kinde,
   # which may not provide them; legacy users still need all three.

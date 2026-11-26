@@ -59,6 +59,10 @@ class OwnershipMatrixTest < ActionDispatch::IntegrationTest
     "transactions#update with unknown category" =>
                                     [:patch,  -> { api_v1_transaction_url(transactions(:one_coffee)) }, { transaction: { category: "no-such-slug" } }, :unprocessable_entity],
 
+    # --- category budgets (DM-3): no ids; budgets are always the caller's ---------
+    "category_budgets#update unknown category" =>
+                                    [:put,    -> { api_v1_category_budget_url("no-such-category") }, { amount: "1" }, :unprocessable_entity],
+
     # --- category corrections (C2b) ---------------------------------------------------
     "category_corrections#undo other" =>
                                     [:post,   -> { undo_api_v1_category_correction_url(category_corrections(:two_fix)) }, nil, :not_found],
@@ -79,7 +83,7 @@ class OwnershipMatrixTest < ActionDispatch::IntegrationTest
 
   # A fingerprint of everything the rows could touch.
   def snapshot
-    [User, Budget, Entry, Tag, Category, Account, Import, Transaction, MerchantRule, TransferLink, CategoryCorrection].to_h do |model|
+    [User, Budget, Entry, Tag, Category, Account, Import, Transaction, MerchantRule, TransferLink, CategoryCorrection, CategoryBudget].to_h do |model|
       [model.name, model.order(:id).map { |r| r.attributes.except("updated_at") }]
     end.merge("EntriesTags" => Entry.order(:id).map { |e| e.tag_ids.sort })
   end
@@ -148,7 +152,7 @@ class OwnershipMatrixTest < ActionDispatch::IntegrationTest
   test "a valid token without a provisioned user gets 403 on every scoped resource" do
     headers = auth_headers("sub" => "kp_not_provisioned")
     [api_v1_budgets_url, api_v1_entries_url, api_v1_tags_url, api_v1_users_url, api_v1_accounts_url,
-     api_v1_transactions_url, api_v1_transfer_links_url].each do |url|
+     api_v1_transactions_url, api_v1_transfer_links_url, api_v1_category_budgets_url].each do |url|
       get url, headers: headers, as: :json
       assert_response :forbidden, url
     end
