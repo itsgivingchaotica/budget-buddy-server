@@ -13,11 +13,13 @@ class Api::V1::TransactionsController < ApplicationController
   before_action :set_transaction, only: %i[update destroy]
   before_action :refuse_if_archived, only: %i[update destroy]
 
-  # GET /transactions?account_id=&from=&to=&category=&needs_review=&page=&per_page=
+  # GET /transactions?account_id=&import_id=&from=&to=&category=&needs_review=&page=&per_page=
   # category: a slug, or "none" for uncategorized rows.
   def index
     scope = current_user.transactions.includes(:category)
     scope = scope.where(account_id: current_user.accounts.find(params[:account_id]).id) if params[:account_id].present?
+    # C2: the import result screen counts one import's rows. Another user's import -> 404.
+    scope = scope.where(import_id: current_user.imports.find(params[:import_id]).id) if params[:import_id].present?
     scope = scope.where(posted_on: parse_date!(:from)..) if params[:from].present?
     scope = scope.where(posted_on: ..parse_date!(:to)) if params[:to].present?
     scope = filter_by_category(scope) if params[:category].present?

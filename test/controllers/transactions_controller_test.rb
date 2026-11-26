@@ -112,4 +112,12 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
     assert_equal 3, list["total"]
   end
+
+  test "filter by import (C2)" do
+    import = @account.imports.create!(filename: "nov.csv")
+    in_import = @account.transactions.create!(posted_on: Date.new(2026, 11, 7), amount: "-3", description: "From file", import:,
+                                              needs_review: true)
+    assert_equal [in_import.id], list(import_id: import.id)["transactions"].map { |t| t["id"] }
+    assert_equal 1, list(import_id: import.id, needs_review: "true")["total"]
+  end
 end

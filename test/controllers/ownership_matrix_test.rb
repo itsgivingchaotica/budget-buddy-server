@@ -52,6 +52,8 @@ class OwnershipMatrixTest < ActionDispatch::IntegrationTest
                                     [:post,   -> { api_v1_account_imports_url(accounts(:two_checking)) }, nil, :not_found],
     "transactions#index for other's account" =>
                                     [:get,    -> { api_v1_transactions_url(account_id: accounts(:two_checking).id) }, nil, :not_found],
+    "transactions#index for other's import" =>
+                                    [:get,    -> { api_v1_transactions_url(import_id: imports(:two_nov).id) }, nil, :not_found],
     "transactions#update other"  => [:patch,  -> { api_v1_transaction_url(transactions(:two_coffee)) }, { transaction: { category: nil } }, :not_found],
     "transactions#destroy other" => [:delete, -> { api_v1_transaction_url(transactions(:two_coffee)) }, nil, :not_found],
     "transactions#update with unknown category" =>

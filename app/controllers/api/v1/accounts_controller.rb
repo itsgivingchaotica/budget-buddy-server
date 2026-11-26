@@ -10,13 +10,13 @@ class Api::V1::AccountsController < ApplicationController
   def index
     accounts = current_user.accounts.order(:created_at, :id)
     accounts = accounts.active unless ActiveModel::Type::Boolean.new.cast(params[:include_archived])
-    latest = Transaction.where(account_id: accounts.select(:id)).group(:account_id).maximum(:posted_on)
-    render json: accounts.map { |account| account_json(account, latest[account.id]) }
+    stats = transaction_stats(accounts.select(:id))
+    render json: accounts.map { |account| account_json(account, stats[account.id]) }
   end
 
   # GET /accounts/1
   def show
-    render json: account_json(@account, @account.transactions.maximum(:posted_on))
+    render json: account_json(@account, transaction_stats(@account.id)[@account.id])
   end
 
   # POST /accounts
@@ -56,10 +56,19 @@ class Api::V1::AccountsController < ApplicationController
     params.require(:account).permit(:name, :kind, :purpose, :purpose_note)
   end
 
+  # Per account: [latest posted_on, number of transactions], in one query.
+  def transaction_stats(account_ids)
+    Transaction.where(account_id: account_ids).group(:account_id)
+               .pluck(:account_id, Arel.sql("MAX(posted_on)"), Arel.sql("COUNT(*)"))
+               .to_h { |id, latest, count| [id, [latest, count]] }
+  end
+
   # `data_through` (I2) = the latest posted_on in the account, computed,
-  # not stored (plan §2.2). Null until something is imported.
-  def account_json(account, data_through = nil)
+  # not stored (plan §2.2); null until something is imported.
+  # `transaction_count` (C2) feeds the account card ("N transactions").
+  def account_json(account, stats = nil)
+    data_through, count = stats
     account.as_json(only: %i[id name kind purpose purpose_note archived_at created_at updated_at])
-           .merge("data_through" => data_through)
+           .merge("data_through" => data_through, "transaction_count" => count || 0)
   end
 end

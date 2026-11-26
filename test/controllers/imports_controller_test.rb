@@ -130,10 +130,14 @@ class ImportsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "the accounts list shows data_through" do
+  test "the accounts list shows data_through and transaction_count" do
     import!(NOV)
     get api_v1_accounts_url, headers: auth_headers, as: :json
-    assert_equal "2026-11-03", response.parsed_body.find { |a| a["id"] == @account.id }["data_through"]
+    mine = response.parsed_body.find { |a| a["id"] == @account.id }
+    assert_equal ["2026-11-03", 6], mine.values_at("data_through", "transaction_count") # 5 imported + 1 fixture
+    savings = users(:one).accounts.create!(name: "Empty savings", kind: "savings", purpose: "savings")
+    get api_v1_account_url(savings), headers: auth_headers, as: :json
+    assert_equal [nil, 0], response.parsed_body.values_at("data_through", "transaction_count")
     get api_v1_account_url(@account), headers: auth_headers, as: :json
     assert_equal "2026-11-03", response.parsed_body["data_through"]
   end

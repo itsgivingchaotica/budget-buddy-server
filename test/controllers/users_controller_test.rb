@@ -76,6 +76,7 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     # Users with transactions can't be deleted yet (accounts keep their
     # history); that waits for a delete-account design. See PROGRESS.md.
     transactions(:one_coffee).destroy!
+    imports(:one_nov).destroy!
     assert_difference("User.count", -1) do
       delete api_v1_user_url(@user), headers: auth_headers, as: :json
     end
