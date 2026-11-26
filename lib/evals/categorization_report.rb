@@ -1,9 +1,13 @@
 module Evals
-  # EV1 (categorization eval): metrics and the Markdown report.
+  # EV1 (categorization eval): metrics and the Markdown report for one or
+  # more runs (easy set, hard set, hard set with Claude only).
   module CategorizationReport
     # $ per million tokens (input, output), list prices noted 2026-11.
     PRICES = { "claude-haiku-5-5" => [0.10, 0.50] }.freeze
     AUTO = %w[memory rule ai].freeze
+    STAGE_NAMES = { "memory" => "Merchant memory", "rule" => "Keyword rules", "ai" => "Claude" }.freeze
+
+    Run = Data.define(:name, :about, :result)
 
     module_function
 
@@ -21,35 +25,22 @@ module Evals
         suggestions: with_suggestion.size,
         suggestions_correct: with_suggestion.count { |r| r.suggestion == r.label },
         review_without_suggestion: review.size - with_suggestion.size,
-        # A true transfer that was categorized (as spending or income) without
-        # going to the user: must be 0. The pipeline never assigns Transfers.
+        # A true transfer categorized (as spending or income) without going to
+        # the user. Must be 0. The pipeline never assigns Transfers itself.
         transfer_critical: auto.count { |r| r.label == "transfers" },
         transfers_total: rows.count { |r| r.label == "transfers" },
         transfers_to_review: review.count { |r| r.label == "transfers" },
-        per_category: rows.group_by(&:label).sort.to_h do |label, rs|
-          a = rs.select { |r| AUTO.include?(r.stage) }
-          [label, { n: rs.size, auto: a.size, auto_correct: a.count { |r| r.predicted == r.label }, review: rs.size - a.size }]
-        end,
-        confusions: auto.reject { |r| r.predicted == r.label }.map { |r| [r.label, r.predicted, r.stage] }.tally
-                        .sort_by { |(_, n)| -n }.to_h
+        per_category: group_stats(rows, &:label),
+        per_kind: group_stats(rows, &:kind),
+        mistakes: auto.reject { |r| r.predicted == r.label }
       }
     end
 
-    # What this run can and can't tell us (numbers filled in from the run).
-    def limitations(m)
-      rules = m[:by_stage]["rule"][:n]
-      claude = m[:by_stage]["ai"][:n]
-      [
-        "## Limitations",
-        "",
-        "- **The keyword rules and the golden merchants were written together** (AI1 and DEMO-G), so #{rules} of #{m[:total]} rows were matched by a rule. " \
-        "High rule accuracy here shows the rules cover the demo data, not that they generalize to real bank exports.",
-        "- **Claude saw few rows:** it categorized #{claude} and suggested #{m[:suggestions]} more. That is too small a sample to estimate Claude's accuracy; " \
-        "a harder golden set (merchants the rules don't know, ambiguous and noisy descriptions) is needed for that.",
-        "- **Some labels are judgement calls** (e.g. \"other\" for marketplaces such as Amazon or Target); those rows are expected to go to review.",
-        "- Synthetic data only; one run (Claude's answers can vary between runs).",
-        ""
-      ]
+    def group_stats(rows, &key)
+      rows.group_by(&key).sort.to_h do |k, rs|
+        a = rs.select { |r| AUTO.include?(r.stage) }
+        [k, { n: rs.size, auto: a.size, auto_correct: a.count { |r| r.predicted == r.label }, review: rs.size - a.size }]
+      end
     end
 
     def stage_stats(rows) = { n: rows.size, correct: rows.count { |r| r.predicted == r.label } }
@@ -61,59 +52,99 @@ module Evals
       (result.input_tokens * input + result.output_tokens * output) / 1_000_000.0
     end
 
-    def markdown(result)
-      m = metrics(result)
-      usd = cost(result)
+    def requests_text(n) = "#{n} #{n == 1 ? "request" : "requests"}"
+
+    # runs: [Run]; meta: hard-set meta (written_on, rules_fingerprint);
+    # fingerprint: the keyword rules' fingerprint now.
+    def markdown(runs, meta:, fingerprint:)
+      first = runs.first.result
       lines = []
-      lines << "# Categorization eval (EV1): #{result.ran_at.to_date.iso8601}"
+      lines << "# Categorization eval (EV1): #{first.ran_at.to_date.iso8601}"
       lines << ""
-      lines << "- **Run:** #{result.ran_at.utc.iso8601} · model `#{result.model}` · golden set of #{m[:total]} synthetic rows (Demo::Generator seed #{result.seed}, end date #{result.end_on})"
-      lines << "- **Where the labels come from:** each row's expected category is the one the demo generator assigned when it created the row (merchant, amount and category are chosen together, before any categorization). The eval never takes a label from the pipeline's output; it only compares that output with the generator's labels. No real data is used."
-      lines << "- **Setup:** a separate eval user with empty merchant memory; the real pipeline (merchant memory → transfer check → keyword rules → Claude), with the daily AI cap in place."
-      lines << "- **Claude usage:** #{result.requests} #{result.requests == 1 ? "request" : "requests"}, #{result.input_tokens} input + #{result.output_tokens} output tokens#{usd ? format(", about $%.4f at list price", usd) : ""}."
+      lines << "- **Run:** #{first.ran_at.utc.iso8601} · model `#{first.model}` · real pipeline (merchant memory → transfer check → keyword rules → Claude), daily AI cap in place; a separate eval user whose merchant memory is emptied before each run."
+      lines << "- **Where the labels come from:** never from the pipeline's output. **Easy set:** each row's category was assigned by the demo generator when it created the row (merchant, amount and category chosen together). **Hard set:** #{runs.find { |r| r.name.start_with?("Hard") } ? "#{meta["written_by"]} wrote each row with its label on #{meta["written_on"]} (`lib/evals/golden_hard.yml`); labels are the author's judgement, and rows marked ambiguous have a defensible label where another is possible." : "not run."} The eval only compares the pipeline's output with these labels. Synthetic data only."
+      lines << "- **Keyword rules:** #{rules_line(meta, fingerprint)}"
+      total_in = runs.sum { |r| r.result.input_tokens }
+      total_out = runs.sum { |r| r.result.output_tokens }
+      total_cost = runs.sum { |r| cost(r.result).to_f }
+      lines << "- **Claude usage (all runs):** #{requests_text(runs.sum { |r| r.result.requests })}, #{total_in} input + #{total_out} output tokens, about #{format("$%.4f", total_cost)} at list price."
       lines << ""
       lines << "## Headline"
       lines << ""
-      lines << "| Metric | Value |"
-      lines << "|---|---|"
-      lines << "| **Accuracy of auto-categorized rows** (categories the user never checks) | **#{pct(m[:auto_correct], m[:auto])}** (#{m[:auto_correct]} of #{m[:auto]}) |"
-      lines << "| Review rate (sent to the user) | #{pct(m[:review], m[:total])} (#{m[:review]} of #{m[:total]}) |"
-      lines << "| **Transfer critical errors** (a transfer categorized as spending or income without review; must be 0) | **#{m[:transfer_critical]}** |"
-      lines << "| Transfers sent to review instead (for transfer matching) | #{m[:transfers_to_review]} of #{m[:transfers_total]} |"
-      lines << "| Correct without any user action (auto-correct / all rows) | #{pct(m[:auto_correct], m[:total])} |"
+      lines << "| | " + runs.map(&:name).join(" | ") + " |"
+      lines << "|---|" + runs.map { "---" }.join("|") + "|"
+      ms = runs.map { |r| metrics(r.result) }
+      lines << "| Rows | " + ms.map { |m| m[:total].to_s }.join(" | ") + " |"
+      lines << "| **Accuracy of auto-categorized rows** (categories the user never checks) | " + ms.map { |m| "**#{pct(m[:auto_correct], m[:auto])}** (#{m[:auto_correct]}/#{m[:auto]})" }.join(" | ") + " |"
+      lines << "| Review rate (sent to the user) | " + ms.map { |m| "#{pct(m[:review], m[:total])} (#{m[:review]})" }.join(" | ") + " |"
+      lines << "| Suggestion right, when the row went to review with one | " + ms.map { |m| "#{pct(m[:suggestions_correct], m[:suggestions])} (#{m[:suggestions_correct]}/#{m[:suggestions]})" }.join(" | ") + " |"
+      lines << "| **Transfer critical errors** (must be 0) | " + ms.map { |m| "**#{m[:transfer_critical]}** of #{m[:transfers_total]}" }.join(" | ") + " |"
+      lines << "| Correct with no user action (auto-correct / all rows) | " + ms.map { |m| pct(m[:auto_correct], m[:total]) }.join(" | ") + " |"
+      AUTO.each do |stage|
+        lines << "| #{STAGE_NAMES[stage]}: rows (accuracy) | " + ms.map { |m| s = m[:by_stage][stage]; "#{s[:n]} (#{pct(s[:correct], s[:n])})" }.join(" | ") + " |"
+      end
+      lines << "| Claude usage | " + runs.map { |r| "#{requests_text(r.result.requests)}, #{r.result.input_tokens}+#{r.result.output_tokens} tokens" }.join(" | ") + " |"
       lines << ""
-      lines << "## By stage (auto-categorized rows)"
-      lines << ""
+      runs.zip(ms).each { |run, m| lines.concat(section(run, m)) }
+      lines.concat(limitations(runs, ms, meta, fingerprint))
+      lines.join("\n")
+    end
+
+    def rules_line(meta, fingerprint)
+      if fingerprint == meta["rules_fingerprint"]
+        "frozen since the hard set was written (fingerprint `#{fingerprint}` matches)."
+      else
+        "**changed after the hard set was written** (fingerprint was `#{meta["rules_fingerprint"]}`, now `#{fingerprint}`). Hard-set results may reflect rules tuned after seeing them."
+      end
+    end
+
+    def section(run, m)
+      lines = ["## #{run.name}", "", run.about, ""]
       lines << "| Stage | Rows | Correct | Accuracy |"
       lines << "|---|---|---|---|"
-      m[:by_stage].each { |stage, s| lines << "| #{{ "memory" => "Merchant memory", "rule" => "Keyword rules", "ai" => "Claude" }[stage]} | #{s[:n]} | #{s[:correct]} | #{pct(s[:correct], s[:n])} |" }
+      AUTO.each { |s| st = m[:by_stage][s]; lines << "| #{STAGE_NAMES[s]} | #{st[:n]} | #{st[:correct]} | #{pct(st[:correct], st[:n])} |" }
+      lines << "| Sent to review | #{m[:review]} | with a suggestion: #{m[:suggestions]} (right: #{m[:suggestions_correct]}) | without: #{m[:review_without_suggestion]} |"
       lines << ""
-      lines << "## Rows sent to review"
-      lines << ""
-      lines << "| | Rows |"
-      lines << "|---|---|"
-      lines << "| Sent to review | #{m[:review]} |"
-      lines << "| … with a suggestion (\"Category?\") | #{m[:suggestions]} (suggestion right: #{pct(m[:suggestions_correct], m[:suggestions])}) |"
-      lines << "| … without a suggestion | #{m[:review_without_suggestion]} |"
-      lines << ""
-      lines << "## Per category"
+      if m[:per_kind].keys != ["easy"]
+        lines << "**By row kind**"
+        lines << ""
+        lines << "| Kind | Rows | Auto-categorized | Auto correct | Sent to review |"
+        lines << "|---|---|---|---|---|"
+        m[:per_kind].each { |k, c| lines << "| #{k} | #{c[:n]} | #{c[:auto]} | #{c[:auto_correct]} (#{pct(c[:auto_correct], c[:auto])}) | #{c[:review]} |" }
+        lines << ""
+      end
+      lines << "**Per category**"
       lines << ""
       lines << "| True category | Rows | Auto-categorized | Auto correct | Sent to review |"
       lines << "|---|---|---|---|---|"
-      m[:per_category].each { |label, c| lines << "| #{label} | #{c[:n]} | #{c[:auto]} | #{c[:auto_correct]} (#{pct(c[:auto_correct], c[:auto])}) | #{c[:review]} |" }
+      m[:per_category].each { |k, c| lines << "| #{k} | #{c[:n]} | #{c[:auto]} | #{c[:auto_correct]} (#{pct(c[:auto_correct], c[:auto])}) | #{c[:review]} |" }
       lines << ""
-      lines.concat(limitations(m))
-      lines << "## Mistakes among auto-categorized rows"
+      lines << "**Mistakes among auto-categorized rows**"
       lines << ""
-      if m[:confusions].empty?
+      if m[:mistakes].empty?
         lines << "None."
       else
-        lines << "| True category | Categorized as | Stage | Rows |"
-        lines << "|---|---|---|---|"
-        m[:confusions].each { |(label, predicted, stage), n| lines << "| #{label} | #{predicted} | #{stage} | #{n} |" }
+        lines << "| Description | True | Categorized as | Stage | Kind |"
+        lines << "|---|---|---|---|---|"
+        m[:mistakes].each { |r| lines << "| #{r.description.gsub("|", "/")} | #{r.label} | #{r.predicted} | #{STAGE_NAMES[r.stage]} | #{r.kind} |" }
       end
       lines << ""
-      lines.join("\n")
+      lines
+    end
+
+    def limitations(runs, ms, meta, fingerprint)
+      easy = runs.index { |r| r.name.start_with?("Easy") }
+      lines = ["## Limitations", ""]
+      if easy
+        m = ms[easy]
+        lines << "- **Easy set:** the keyword rules and the demo merchants were written together (AI1 and DEMO-G), so #{m[:by_stage]["rule"][:n]} of #{m[:total]} rows hit a rule. It measures rule coverage of the demo data, not generalization."
+      end
+      lines << "- **Hard set:** #{runs.find { |r| r.name.start_with?("Hard") }&.result&.rows&.size || 0} rows written by the same author as the rules (deliberately using merchants and phrasings the rules don't know), labelled by judgement; ambiguous rows have more than one defensible answer. Small sample: treat percentages as indicative."
+      lines << "- **Claude-only run:** keyword rules off; merchant memory empty; the transfer check stays on, because it only sends rows to review (it never categorizes), so the critical-error count stays comparable."
+      lines << "- One run each; Claude's answers can vary between runs. Synthetic data only."
+      lines << "- #{fingerprint == meta["rules_fingerprint"] ? "The keyword rules were not changed after the hard set was written." : "The keyword rules were changed after the hard set was written (see the top)."}"
+      lines << ""
+      lines
     end
   end
 end

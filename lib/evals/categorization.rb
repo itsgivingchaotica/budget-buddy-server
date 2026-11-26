@@ -2,11 +2,10 @@ module Evals
   # EV1 (categorization eval), plan D-016 / handoff #05 §D: runs the golden
   # set through the real categorization pipeline and measures it.
   #
-  # Labels: each golden row's expected category is the one Demo::Generator
-  # assigned when it created the row ("this merchant, this amount, this
-  # category"), before any categorization exists. The eval never derives a
-  # label from the pipeline's output; it only compares that output to the
-  # generator's labels.
+  # Labels: each golden row's expected category comes from the golden set
+  # itself (see GoldenSets): the demo generator's category for the easy set,
+  # the hand-written label for the hard set. The eval never derives a label
+  # from the pipeline's output; it only compares that output to the labels.
   #
   # Setup: a separate eval user (never the demo account or a real login),
   # wiped first so merchant memory starts empty, with one account per
@@ -28,20 +27,24 @@ module Evals
     # One golden row's outcome. stage: "memory" | "rule" | "ai" (categorized
     # without the user) or "review" (sent to the user). predicted: the
     # category slug the pipeline set, or for review rows the suggestion (if
-    # any). label: the generator's true slug.
-    Row = Data.define(:label, :description, :amount, :purpose, :stage, :predicted, :suggestion, :transfer_like)
+    # any). label: the golden set's true slug. kind: easy, or the hard-set
+    # row kind (unknown_merchant, messy, p2p, refund, ambiguous, transfer).
+    Row = Data.define(:label, :kind, :description, :amount, :purpose, :stage, :predicted, :suggestion, :transfer_like)
 
-    Result = Data.define(:rows, :model, :requests, :input_tokens, :output_tokens, :ran_at, :seed, :end_on)
+    Result = Data.define(:rows, :model, :requests, :input_tokens, :output_tokens, :ran_at, :keyword_rules)
 
-    def self.run(env: Rails.env, ai: nil, generator: Demo::Generator.new)
-      new(env:, ai:, generator:).run
+    # golden: GoldenSets::Row list (easy or hard). keyword_rules: false runs
+    # the pipeline with the keyword rules switched off (Claude-only run).
+    def self.run(env: Rails.env, ai: nil, golden: GoldenSets.easy, keyword_rules: true)
+      new(env:, ai:, golden:, keyword_rules:).run
     end
 
-    def initialize(env:, ai:, generator:)
+    def initialize(env:, ai:, golden:, keyword_rules:)
       raise ArgumentError, "the eval runs only in development or test" unless %w[development test].include?(env.to_s)
 
       @ai = ai
-      @generator = generator
+      @golden = golden
+      @keyword_rules = keyword_rules
     end
 
     def run
@@ -51,12 +54,12 @@ module Evals
         [purpose, user.accounts.find_by(name: attrs[:name]) || user.accounts.create!(attrs.merge(purpose:))]
       end
 
-      golden = @generator.golden
+      golden = @golden
       ids = insert(golden, accounts)
       before = usage(user)
 
       MAX_RUNS.times do
-        break if ::Categorization::Pipeline.call(user:, scope: user.transactions, ai: @ai).remaining.zero?
+        break if ::Categorization::Pipeline.call(user:, scope: user.transactions, ai: @ai, keyword_rules: @keyword_rules).remaining.zero?
       end
 
       after = usage(user)
@@ -64,7 +67,7 @@ module Evals
       Result.new(
         rows:, model: AnthropicClient.model_for(:categorization),
         requests: after[0] - before[0], input_tokens: after[1] - before[1], output_tokens: after[2] - before[2],
-        ran_at: Time.current, seed: Demo::Generator::DEFAULT_SEED, end_on: Demo::Generator::DEFAULT_END_ON
+        ran_at: Time.current, keyword_rules: @keyword_rules
       )
     end
 
@@ -76,7 +79,7 @@ module Evals
     def insert(golden, accounts)
       seen = Hash.new(0)
       golden.map do |g|
-        account = accounts.fetch(Demo::Generator::ACCOUNTS[g.account][:purpose])
+        account = accounts.fetch(g.purpose)
         description = g.description.gsub(/\s+/, " ").strip
         amount = BigDecimal(g.cents) / 100
         key = [account.id, Transaction.duplicate_key_for(posted_on: g.date, amount:, normalized_description: Transaction.normalize_description(description))]
@@ -90,7 +93,7 @@ module Evals
         t = txns.fetch(id)
         auto = t.category_id.present? && !t.needs_review
         Row.new(
-          label: g.slug, description: t.description, amount: t.amount, purpose: t.account.purpose,
+          label: g.label, kind: g.kind, description: t.description, amount: t.amount, purpose: t.account.purpose,
           stage: auto ? t.categorization_source : "review",
           predicted: auto ? t.category.slug : t.suggested_category&.slug,
           suggestion: t.suggested_category&.slug,
