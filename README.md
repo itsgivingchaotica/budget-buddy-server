@@ -1,5 +1,7 @@
 # README
 
+> **Project docs** for both repos (product specs, screen designs, architecture, plan, progress and evals) are in [`docs/`](docs/).
+
 This README would normally document whatever steps are necessary to get the
 application up and running.
 
