@@ -179,6 +179,33 @@ Left to spend over the calendar week; uncategorized counts as spending; conserva
 
 ---
 
+## D-027 — Deterministic first, AI as assistant (engineering principle)
+
+**Status:** Principle approved in spirit (owner request, 2026-11-26); the three changes below are Proposed.
+
+Following advice from an experienced AI engineer: build scripts and deterministic systems first, use AI to connect and assist them, and make sure the developer understands and verifies what gets built. Budget Buddy already follows the core rule (D-002 "AI proposes, Rails calculates, user decides"); this makes it a standing rule for every feature.
+
+**The split in Budget Buddy:**
+
+| Deterministic code decides | AI assists |
+|---|---|
+| CSV parsing, duplicate detection, import limits | — |
+| Transfer matching (suggestions; user confirms) | Second safety net: low confidence on transfer-like rows sends them to review |
+| Keyword rules and merchant memory | Categorizing rows the rules don't know, from a fixed list, with a confidence score |
+| Budget options, income check, Left to spend, bills, goal and debt maths | Choosing among Rails-computed options and explaining them (no digits in its text) |
+| Onboarding facts (pay pattern, side income, likely bills) | Picking and wording ≤ 2 follow-up questions from a fixed menu |
+| Analytics answering coach questions; the figure check | Understanding the question, picking read-only tools, wording the answer |
+| Access control, rate limits, AI cost cap | — |
+
+**AI feature contract** (every AI feature must state all of these in its spec): inputs (and what is deliberately excluded); what the AI decides; what code decides; validation of the output; fallback when it fails; how it's evaluated (labels independent of the system); what's logged (no financial text).
+
+**Proposed changes:**
+1. **Show where a category came from.** Rows categorized by Claude without review get a small "by coach" marker in Activity, and a filter to review them. The user can always see and override AI decisions, not just uncertain ones.
+2. **Understanding check per PR.** Each PR report from Claude Code lists the 2–3 files that hold the core logic, a plain-language walkthrough, and 3 questions the owner should be able to answer. The owner reads those files before approving.
+3. **Figures audit script for Q1.** A rake task that computes the same figures through Home, Plan and the coach's tools for the demo user and fails if any differ.
+
+---
+
 ## Open questions register
 
 | # | Question | Phase | Status |
