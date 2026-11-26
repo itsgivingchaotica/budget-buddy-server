@@ -8,6 +8,15 @@ Rails.application.routes.draw do
       # DM-3 (category budgets)
       put "category_budgets", to: "category_budgets#replace_month"
       resources :category_budgets, only: %i[index update], param: :category_slug
+      # OB1 (bills)
+      resources :obligations, only: %i[index show create update] do
+        get :due, on: :collection
+        member do
+          post :archive
+          post "payments", action: :pay
+          delete "payments/:due_on", action: :unpay, as: :payment
+        end
+      end
       # C2b: undo a category correction
       resources :category_corrections, only: [] do
         post :undo, on: :member

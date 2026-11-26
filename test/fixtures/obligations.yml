@@ -1,0 +1,12 @@
+# OB1 (bills). `two_rent` belongs to users(:two), for the ownership matrix.
+# (Fixtures skip validation; the legacy category stands in for a fixed one.)
+two_rent:
+  user: two
+  name: Rent
+  amount: 1200.00
+  category: expense
+  first_due_on: 2026-01-01
+  recurrence: monthly
+  interval: 1
+  day_of_month: 1
+  source: user

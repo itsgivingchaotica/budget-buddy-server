@@ -30,6 +30,8 @@ class Category < ApplicationRecord
   scope :spending, -> { where(kind: "spending") }
   # "Flexible" for Left to spend (spec §7): active spending categories labelled variable.
   scope :flexible, -> { spending.where(active: true, fixed_variable: "variable") }
+  # "Fixed": active spending categories labelled fixed; these are bills (OB1).
+  scope :fixed, -> { spending.where(active: true, fixed_variable: "fixed") }
 
   KINDS.each do |k|
     define_method(:"#{k}?") { kind == k }
