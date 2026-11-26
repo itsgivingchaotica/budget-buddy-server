@@ -53,7 +53,7 @@ class AnalyticsTest < ActionDispatch::IntegrationTest
     assert_equal ["2026-11", true, "18.00", "2026-11-20"], body.values_at("month", "plan_exists", "uncategorized", "data_through")
     assert_equal({ "category" => "dining-out", "name" => "Dining Out", "budget" => "35.00", "spent" => "40.00", "remaining" => "-5.00", "status" => "over" },
                  body["categories"][1])
-    assert_equal({ "budget" => "165.00", "spent" => "160.00", "remaining" => "5.00" }, body["totals"])
+    assert_equal({ "budget" => "165.00", "spent" => "160.00", "remaining" => "5.00", "everyday_spent" => "203.00" }, body["totals"])
     assert_equal "420.00", call(api_v1_analytics_budget_vs_actual_url(month: "2026-10"))["categories"].first["spent"]
     call(api_v1_analytics_budget_vs_actual_url(month: "October"))
     assert_equal "month", response.parsed_body["field"]

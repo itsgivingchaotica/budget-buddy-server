@@ -1,5 +1,5 @@
 module Demo
-  # C3 screenshots: puts one user into a chosen Home state, using the real
+  # C3/C8 screenshots: puts one user into a chosen Home or Plan state, using the real
   # services: budgets (DM-3), bills and payments (OB1), a goal (G1), and this
   # week's transactions through the real CSV importer (I2), with descriptions
   # the keyword rules know, so no Claude call is made.
@@ -9,13 +9,25 @@ module Demo
   #            Phone due on the week's first day and already paid, Streaming
   #            due in 5 days; Car insurance $600 in 8 weeks
   #   over     the same, with budgets low enough to be about $20 over this week
+  #   plan     for the Plan tab (C8): this week's rows plus, on the month's 1st,
+  #            Dining Out $40 (so Dining Out is over its $50 budget), Clothing
+  #            $63.50 (no budget yet) and an uncategorized $25 transfer to a
+  #            person; budgets from this month's spending: comfortably under,
+  #            except Dining Out about $6 over; the three bills plus Electric (12th);
+  #            goals Car insurance, Car fund ($1,260 of $3,000 by +6 months)
+  #            and Pay off the card (22.9% APR, $120 a month, $2,560 → $1,840)
   #
   # Every run first removes what an earlier run made (the user's budgets,
   # bills and goals, and the week rows it imported), so a state replaces the
   # previous one. Guards as demo:reset: development only; the demo user by
   # default, another account only when named explicitly by email.
   module HomeState
-    STATES = %w[no_plan normal over].freeze
+    STATES = %w[no_plan normal over plan].freeze
+    # "plan": extra rows on the month's 1st (dining, clothing; the transfer
+    # check sends the last one to review without Claude, so it stays uncategorized).
+    MONTH_ROWS = [["DOORDASH", "-40.00"], ["UNIQLO", "-63.50"], ["TRANSFER TO J SMITH", "-25.00"]].freeze
+    # Minimum budgets for the plan state (see plan_budgets!).
+    PLAN_BUDGETS = { "groceries" => "480", "dining-out" => "50", "transportation" => "140", "entertainment" => "80" }.freeze
     FILENAME = "home-state-this-week.csv".freeze
     OVER_BY = BigDecimal("20")
     # This week's purchases on the main account (all match keyword rules).
@@ -42,10 +54,12 @@ module Demo
 
       spent = import_week!(user, today, week_start)
       monthly = state.to_s == "over" ? over_monthly(user, spent, week_start) : NORMAL_MONTHLY
+      import_csv!(main_account(user), MONTH_ROWS.map { |d, a| [today.beginning_of_month, d, a] }) if state.to_s == "plan"
       ActiveRecord::Base.transaction do
-        budgets!(user, monthly, week_start)
+        state.to_s == "plan" ? plan_budgets!(user, week_start) : budgets!(user, monthly, week_start)
         bills!(user, today, week_start)
         user.goals.create!(goal_type: "upcoming_payment", name: "Car insurance", target_amount: "600", target_date: today + 56)
+        plan_extras!(user, today) if state.to_s == "plan"
       end
       { state: state.to_s, user_id: user.id, spent_this_week: spent.to_s("F"), monthly_budget: monthly.to_s("F") }
     end
@@ -68,10 +82,15 @@ module Demo
     # Purchases spread over this week up to today on the main account, and a
     # tiny interest row dated today on every other active account, so
     # data_through is today and Home isn't "stale". Returns the money out.
-    def import_week!(user, today, week_start)
+    def main_account(user)
       accounts = user.accounts.active.order(:id).to_a
-      main = accounts.find { |a| a.purpose == "spending" } || accounts.first
-      main ||= user.accounts.create!(name: "Everyday Checking", kind: "checking", purpose: "spending")
+      accounts.find { |a| a.purpose == "spending" } || accounts.first ||
+        user.accounts.create!(name: "Everyday Checking", kind: "checking", purpose: "spending")
+    end
+
+    def import_week!(user, today, week_start)
+      main = main_account(user)
+      accounts = user.accounts.active.order(:id).to_a
       days = (week_start..today).to_a
       rows = PURCHASES.each_with_index.map { |(desc, amount), i| [days[(i * days.size) / PURCHASES.size], desc, amount] }
       rows << [today, "INTEREST PAID", "0.01"] unless rows.any? { |d, _, _| d == today }
@@ -99,6 +118,35 @@ module Demo
           user.category_budgets.create!(category:, amount: (monthly * BigDecimal(share.to_s)).round(2), effective_from: month)
         end
       end
+    end
+
+    # Budgets from this month's real spending: each category comfortably
+    # under (spent × 1.4, rounded up to $10, at least its PLAN_BUDGETS
+    # amount), except Dining Out, set about $6 below what's been spent so
+    # its row shows "over".
+    def plan_budgets!(user, week_start)
+      today = UserClock.today(user)
+      spent = SpendingAnalytics.totals(user, from: today.beginning_of_month, to: today)[:by_category].transform_keys(&:slug)
+      [week_start.beginning_of_month, (week_start + 6).beginning_of_month].uniq.each do |month|
+        PLAN_BUDGETS.each do |slug, floor|
+          category = Category.flexible.find_by(slug:) or next
+          s = spent.fetch(slug, BigDecimal("0"))
+          amount = slug == "dining-out" ? [(s - 6).floor, 0].max : [((s * 14 / 10) / 10).ceil * 10, BigDecimal(floor)].max
+          user.category_budgets.create!(category:, amount:, effective_from: month)
+        end
+      end
+    end
+
+    # Electric (paid this month), the Car fund and the card (with a balance update).
+    def plan_extras!(user, today)
+      electric_due = today.beginning_of_month + 11
+      if (utilities = Category.fixed.find_by(slug: "utilities"))
+        electric = user.obligations.create!(name: "Electric", amount: "70", category: utilities, first_due_on: electric_due, recurrence: "monthly")
+        electric.payments.create!(due_on: electric_due, paid_on: [electric_due, today].min) if electric_due <= today
+      end
+      user.goals.create!(goal_type: "purchase", name: "Car fund", target_amount: "3000", target_date: today >> 6, starting_balance: "1260")
+      card = user.goals.create!(goal_type: "debt_payoff", name: "Pay off the card", starting_balance: "2560", apr: "22.9", monthly_payment: "120")
+      card.contributions.create!(kind: "balance_update", balance_after: "1840", contributed_on: today)
     end
 
     def bills!(user, today, week_start)

@@ -140,10 +140,13 @@ module SpendingAnalytics
                          .filter_map { |c| (s = t[:by_category].fetch(c, ZERO)).positive? ? { category: c.slug, name: c.name, spent: s } : nil }
     total_budget = rows.sum(ZERO) { |r| r[:budget] }
     total_spent = rows.sum(ZERO) { |r| r[:spent] }
+    # Everyday spending: budgeted + "No budget yet" + uncategorized money out
+    # (the Plan summary card, SCREENS_PLAN §3 "Totals").
+    everyday = total_spent + unbudgeted.sum(ZERO) { |r| r[:spent] } + t[:uncategorized]
     {
       month: month.strftime("%Y-%m"), plan_exists: rows.any?, categories: rows, unbudgeted:,
       uncategorized: t[:uncategorized],
-      totals: { budget: total_budget, spent: total_spent, remaining: total_budget - total_spent },
+      totals: { budget: total_budget, spent: total_spent, remaining: total_budget - total_spent, everyday_spent: everyday },
       data_through: coverage(user)[:data_through]
     }
   end
