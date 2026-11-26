@@ -36,8 +36,10 @@ module Categorization
       def processed = memory + rule + sent_to_ai
     end
 
-    def self.call(user:, scope:, ai: nil)
-      new(user:, scope:, ai: ai || ai_for(user)).call
+    # keyword_rules: false is for EV1's Claude-only run (measure Claude on
+    # rows the rules would have caught); the app always uses the rules.
+    def self.call(user:, scope:, ai: nil, keyword_rules: true)
+      new(user:, scope:, ai: ai || ai_for(user), keyword_rules:).call
     end
 
     # The AI step for a user: Claude (AI2) when an API key is configured,
@@ -48,10 +50,11 @@ module Categorization
       ClaudeCategorizer.new(user:)
     end
 
-    def initialize(user:, scope:, ai:)
+    def initialize(user:, scope:, ai:, keyword_rules: true)
       @user = user
       @scope = scope
       @ai = ai
+      @keyword_rules = keyword_rules
     end
 
     def call
@@ -79,7 +82,7 @@ module Categorization
       # 2. Keyword rules
       by_rule = {}
       rest = rest.reject do |id, _, amount, _|
-        slug = KeywordRules.match(keys[id], amount)
+        slug = @keyword_rules ? KeywordRules.match(keys[id], amount) : nil
         by_rule[id] = slug if slug && categories.key?(slug)
       end
 

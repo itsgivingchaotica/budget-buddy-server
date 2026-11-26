@@ -1,0 +1,122 @@
+# EV1 (categorization eval): the hard golden set.
+#
+# Hand-written rows that the keyword rules were NOT written for: merchants
+# the rules don't know, messy bank descriptions, person-to-person payments,
+# refunds, ambiguous merchants and transfers (two phrased so the transfer
+# check misses them). Each row's label was written with the row, before
+# the first hard-set run. All merchants and people are fictional (well-known
+# chains appear only as merchants).
+#
+# Labels are the author's judgement (Claude Code, 2026-11-26), reviewable by
+# the product owner. Rows marked `ambiguous` have a defensible label but a
+# reasonable person could pick another.
+#
+# Keyword rules frozen: the report recomputes the fingerprint of
+# Categorization::KeywordRules::RULES and says so if it differs from
+# `rules_fingerprint` below (i.e. if the rules were changed after this set
+# was written).
+#
+# Fields: description, amount (signed; negative = money out), purpose (the
+# account's purpose), label (true category slug), kind.
+meta:
+  written_on: 2026-11-26
+  written_by: Claude Code (before the first hard-set run)
+  rules_fingerprint: 9efd9329adcaf092
+  first_date: 2026-10-01
+
+rows:
+  # --- merchants the rules don't know -------------------------------------------
+  - { description: "BRIGHTWATER PHO", amount: "-18.40", purpose: spending, label: dining-out, kind: unknown_merchant }
+  - { description: "KESTREL AUTO REPAIR LLC", amount: "-412.00", purpose: spending, label: transportation, kind: unknown_merchant }
+  - { description: "JUNIPER DENTAL STUDIO", amount: "-145.00", purpose: spending, label: healthcare, kind: unknown_merchant }
+  - { description: "OAKLEAF YOGA COLLECTIVE", amount: "-60.00", purpose: spending, label: personal-care, kind: unknown_merchant }
+  - { description: "MARIGOLD BAKEHOUSE", amount: "-9.25", purpose: spending, label: dining-out, kind: unknown_merchant }
+  - { description: "HOLLOWAY HARDWARE CO", amount: "-34.17", purpose: spending, label: home-improvement, kind: unknown_merchant }
+  - { description: "SILVERPINE PEDIATRICS", amount: "-40.00", purpose: spending, label: healthcare, kind: unknown_merchant }
+  - { description: "COPPERLEAF THREADS", amount: "-58.00", purpose: spending, label: clothing, kind: unknown_merchant }
+  - { description: "RIVERBEND CINEMAS", amount: "-24.00", purpose: spending, label: entertainment, kind: unknown_merchant }
+  - { description: "BLUE HERON MARKET", amount: "-63.12", purpose: spending, label: groceries, kind: unknown_merchant }
+  - { description: "GREENWAY FARM STAND", amount: "-14.00", purpose: spending, label: groceries, kind: unknown_merchant }
+  - { description: "CEDAR RIDGE UTILITY DIST", amount: "-71.45", purpose: bills, label: utilities, kind: unknown_merchant }
+  - { description: "PINNACLE MUTUAL AUTO INS", amount: "-128.00", purpose: bills, label: insurance, kind: unknown_merchant }
+  - { description: "LAKESHORE COMMUNITY COLLEGE", amount: "-350.00", purpose: spending, label: education, kind: unknown_merchant }
+  - { description: "STARLIGHT KARAOKE BAR", amount: "-32.00", purpose: spending, label: entertainment, kind: unknown_merchant }
+  - { description: "SUMMIT CLIMBING GYM", amount: "-75.00", purpose: spending, label: personal-care, kind: unknown_merchant }
+  - { description: "MAPLEWOOD FLORIST", amount: "-42.00", purpose: spending, label: gifts, kind: unknown_merchant }
+  - { description: "TIDEWATER FERRY", amount: "-12.50", purpose: spending, label: transportation, kind: unknown_merchant }
+  - { description: "PARKVIEW APARTMENTS LLC", amount: "-1650.00", purpose: bills, label: rent, kind: unknown_merchant }
+  - { description: "GLOBETROTTER INN", amount: "-210.00", purpose: spending, label: travel, kind: unknown_merchant }
+  - { description: "CRESCENT MOON SUSHI", amount: "-38.60", purpose: spending, label: dining-out, kind: unknown_merchant }
+  - { description: "EVERGREEN TUTORING", amount: "-120.00", purpose: spending, label: education, kind: unknown_merchant }
+  - { description: "BRIGHTSMILE ORTHODONTICS", amount: "-250.00", purpose: spending, label: healthcare, kind: unknown_merchant }
+  - { description: "TALLGRASS BREWING CO", amount: "-22.00", purpose: spending, label: dining-out, kind: unknown_merchant }
+
+  # --- messy bank descriptions ----------------------------------------------------
+  - { description: "PURCHASE AUTHORIZED ON 11/02 SQ *LUNA TAQUERIA S586306123 CARD 4412", amount: "-15.75", purpose: spending, label: dining-out, kind: messy }
+  - { description: "POS DEBIT 1103 TST* THE GOLDEN SPOON 0045", amount: "-27.30", purpose: spending, label: dining-out, kind: messy }
+  - { description: "ACH DEBIT CEDAR RIDGE UTIL DIST WEB PMT", amount: "-68.90", purpose: bills, label: utilities, kind: messy }
+  - { description: "CHECKCARD 1104 BLUE HERON MKT 0412 PORTLAND OR", amount: "-41.08", purpose: spending, label: groceries, kind: messy }
+  - { description: "RECURRING PMT STREAMFLIX MONTHLY", amount: "-12.99", purpose: spending, label: subscriptions, kind: messy }
+  - { description: "DBT CRD 0923 KESTREL AUTO #2 REPAIRS", amount: "-86.00", purpose: spending, label: transportation, kind: messy }
+  - { description: "UBER *TRIP HELP.UBER.COM", amount: "-17.80", purpose: spending, label: transportation, kind: messy }
+  - { description: "DD *DOORDASH LUNABURGER", amount: "-31.20", purpose: spending, label: dining-out, kind: messy }
+  - { description: "SP * FERNWOOD APPAREL", amount: "-54.00", purpose: spending, label: clothing, kind: messy }
+  - { description: "INTL PURCHASE GLOBETROTTER HOSTEL LISBON", amount: "-48.00", purpose: spending, label: travel, kind: messy }
+  - { description: "VISA DDA PUR 4412 HOLLOWAY HARDWARE", amount: "-19.99", purpose: spending, label: home-improvement, kind: messy }
+  - { description: "WWW.NIMBUSCLOUD.IO BILL", amount: "-9.99", purpose: spending, label: subscriptions, kind: messy }
+  - { description: "ELECTRONIC PMT NORTHSTAR LOAN SVC", amount: "-320.00", purpose: bills, label: debt-payments, kind: messy }
+  - { description: "MIN PAYMENT DUE CARD ENDING 4412", amount: "-35.00", purpose: bills, label: debt-payments, kind: messy }
+
+  # --- person-to-person payments ----------------------------------------------------
+  - { description: "ZELLE PAYMENT TO JORDAN K - NOV RENT", amount: "-900.00", purpose: bills, label: rent, kind: p2p }
+  - { description: "VENMO PAYMENT TO A. PARK - TACOS", amount: "-14.00", purpose: spending, label: dining-out, kind: p2p }
+  - { description: "Payment from M. Chen - photography shoot", amount: "240.00", purpose: side_income, label: income, kind: p2p }
+  - { description: "VENMO PAYMENT TO S. RIOS - CONCERT TIX", amount: "-55.00", purpose: spending, label: entertainment, kind: p2p }
+  - { description: "Payment from L. Tanaka - logo revisions", amount: "120.00", purpose: side_income, label: income, kind: p2p }
+  - { description: "ZELLE PAYMENT TO DR. MEI LIN DDS", amount: "-180.00", purpose: spending, label: healthcare, kind: p2p }
+  - { description: "VENMO PAYMENT TO H. NGUYEN - GROCERIES SPLIT", amount: "-32.50", purpose: spending, label: groceries, kind: p2p }
+  - { description: "APPLE CASH SENT TO B. COLE - BIRTHDAY GIFT", amount: "-40.00", purpose: spending, label: gifts, kind: p2p }
+  - { description: "ZELLE FROM R. OKAFOR", amount: "45.00", purpose: spending, label: other, kind: ambiguous }
+  - { description: "CASH APP*K OSEI", amount: "-60.00", purpose: spending, label: other, kind: ambiguous }
+
+  # --- refunds (money back into a spending category) ------------------------------------
+  - { description: "REFUND COPPERLEAF THREADS", amount: "58.00", purpose: spending, label: clothing, kind: refund }
+  - { description: "AMAZON.COM REFUND 112-4471", amount: "23.49", purpose: spending, label: other, kind: refund }
+  - { description: "RETURN HOLLOWAY HARDWARE CO", amount: "34.17", purpose: spending, label: home-improvement, kind: refund }
+  - { description: "GLOBETROTTER INN CREDIT ADJ", amount: "60.00", purpose: spending, label: travel, kind: refund }
+  - { description: "JUNIPER DENTAL STUDIO INS REIMB", amount: "80.00", purpose: spending, label: healthcare, kind: refund }
+  - { description: "TRADER JOE'S #552 RETURN", amount: "6.99", purpose: spending, label: groceries, kind: refund }
+  - { description: "STREAMFLIX REFUND", amount: "12.99", purpose: spending, label: subscriptions, kind: refund }
+
+  # --- ambiguous merchants (defensible label, another is possible) ---------------------
+  - { description: "COSTCO WHSE #0112", amount: "-184.33", purpose: spending, label: groceries, kind: ambiguous }
+  - { description: "WALMART SUPERCENTER #2210", amount: "-96.42", purpose: spending, label: groceries, kind: ambiguous }
+  - { description: "CVS/PHARMACY #0099", amount: "-24.10", purpose: spending, label: healthcare, kind: ambiguous }
+  - { description: "TARGET T-1234", amount: "-71.80", purpose: spending, label: other, kind: ambiguous }
+  - { description: "SHELL OIL 57444 FOOD MART", amount: "-12.40", purpose: spending, label: transportation, kind: ambiguous }
+  - { description: "APPLE.COM/BILL", amount: "-2.99", purpose: spending, label: subscriptions, kind: ambiguous }
+  - { description: "GOOGLE *STORAGE", amount: "-1.99", purpose: spending, label: subscriptions, kind: ambiguous }
+  - { description: "HOME GOODS #881", amount: "-45.20", purpose: spending, label: home-improvement, kind: ambiguous }
+  - { description: "NORTHSIDE COIN LAUNDRY", amount: "-6.50", purpose: spending, label: other, kind: ambiguous }
+  - { description: "WILLOW CREEK VET CLINIC", amount: "-89.00", purpose: spending, label: other, kind: ambiguous }
+  - { description: "PAWS & CLAWS PET SUPPLY", amount: "-48.30", purpose: spending, label: other, kind: ambiguous }
+  - { description: "SPROCKET BIKE SHOP", amount: "-64.00", purpose: spending, label: transportation, kind: ambiguous }
+  - { description: "PAYPAL *ETSY HANDMADE GOODS", amount: "-36.00", purpose: spending, label: other, kind: ambiguous }
+  - { description: "AMZN Mktp US*2K47H1Z30", amount: "-23.49", purpose: spending, label: other, kind: ambiguous }
+  - { description: "INTERNAL TFR TO CREDIT CARD 4412", amount: "-500.00", purpose: spending, label: debt-payments, kind: ambiguous }
+  - { description: "STATE TAX REFUND", amount: "412.00", purpose: spending, label: income, kind: ambiguous }
+  - { description: "ACME CORP EXPENSE REIMB", amount: "86.40", purpose: spending, label: income, kind: ambiguous }
+
+  # --- transfers between the person's own accounts ------------------------------------
+  - { description: "ONLINE TRANSFER TO SAV XXXXXX4821", amount: "-200.00", purpose: spending, label: transfers, kind: transfer }
+  - { description: "MOBILE TRANSFER FROM CHK 1190", amount: "200.00", purpose: savings, label: transfers, kind: transfer }
+  - { description: "VENMO CASHOUT", amount: "300.00", purpose: spending, label: transfers, kind: transfer }
+  - { description: "TRANSFER FROM BROKERAGE ACCT", amount: "1000.00", purpose: spending, label: transfers, kind: transfer }
+  # Phrased so the transfer check misses them: they reach Claude, which must not
+  # categorize them confidently (that would be a critical error).
+  - { description: "WEB XFER TO SAVINGS 4821", amount: "-150.00", purpose: spending, label: transfers, kind: transfer }
+  - { description: "AUTOMATIC SAVINGS SWEEP", amount: "-50.00", purpose: spending, label: transfers, kind: transfer }
+
+  # --- income ---------------------------------------------------------------------------
+  - { description: "NORTHWIND LABS DIR DEP", amount: "2310.00", purpose: spending, label: income, kind: unknown_merchant }
+  - { description: "INTEREST EARNED", amount: "3.12", purpose: savings, label: income, kind: unknown_merchant }
