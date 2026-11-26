@@ -5,6 +5,7 @@
 #   bin/rails demo:reset [USER_EMAIL=you@example.com]
 #                                  delete the demo user's (or that user's) imported data (development only)
 #   bin/rails demo:seed USER_EMAIL=you@example.com
+#   bin/rails "demo:home_state[normal]" [USER_EMAIL=…]   no_plan | normal | over, for Home screenshots
 #   bin/rails demo:sample_plan [USER_EMAIL=…]   a stand-in plan (budgets, bills, a goal) for checking Home/Plan
 #                                  ...or into an existing (signed-in) user, so the app shows them
 #
@@ -50,6 +51,14 @@ namespace :demo do
       end
     Demo::Seeder.call(user:, generator: demo_generator, log: ->(line) { puts line })
     puts "Demo data loaded for user ##{user.id}."
+  end
+
+  desc "Put the demo user (or USER_EMAIL) into a Home state for screenshots: no_plan, normal or over (development only)"
+  task :home_state, [:state] => :environment do |_t, args|
+    email = ENV["USER_EMAIL"].presence || Demo::Reset::DEMO_EMAIL
+    puts "Home state for #{email == Demo::Reset::DEMO_EMAIL ? 'the demo user' : 'USER_EMAIL'}: #{Demo::HomeState.call(state: args[:state].to_s, email:)}"
+  rescue Demo::HomeState::Refused => e
+    abort e.message
   end
 
   desc "Add a stand-in plan (budgets, two bills, a goal) for the demo user or USER_EMAIL, to check Home and Plan (development only)"
