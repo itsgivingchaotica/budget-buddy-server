@@ -1,0 +1,7 @@
+# C2b: users(:two)'s correction (ownership matrix).
+two_fix:
+  user: two
+  picked_transaction: two_coffee
+  new_category: expense
+  merchant_key: FIXTURE COFFEE
+  previous: []

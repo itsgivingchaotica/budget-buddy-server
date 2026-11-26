@@ -5,6 +5,10 @@ Rails.application.routes.draw do
       resources :accounts, only: %i[index show create update destroy] do
         resources :imports, only: %i[create] # I2
       end
+      # C2b: undo a category correction
+      resources :category_corrections, only: [] do
+        post :undo, on: :member
+      end
       # TR1 (transfer matching)
       resources :transfer_links, only: %i[index destroy] do
         member do
@@ -14,6 +18,7 @@ Rails.application.routes.draw do
       end
       resources :transactions, only: %i[index update destroy] do # I2
         post :categorize, on: :collection # S4-min / AI2
+        get :review_groups, on: :collection # C2b
       end
 
       resources :entries do

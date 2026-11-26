@@ -9,7 +9,8 @@ module Categorization
   #   3. AI               - only for rows 1-2 couldn't place (source "ai"):
   #                         Claude (AI2) when configured, else DisabledAi.
   # Rows nothing could place, or the AI wasn't sure about (confidence below
-  # AI_MIN_CONFIDENCE), stay uncategorized with needs_review = true.
+  # AI_MIN_CONFIDENCE), stay uncategorized with needs_review = true; a valid
+  # but unsure pick is kept as suggested_category_id (C2b).
   #
   # AI2: at most AI_ROWS_PER_RUN rows go to the AI per run, in batches of
   # AI_BATCH_SIZE. A row the AI answered (even with a refusal or a cut-off
@@ -84,7 +85,7 @@ module Categorization
 
       # 3. AI, for what's left and not already answered
       for_ai = rest.select { |_, _, _, attempted| attempted.nil? }.first(AI_ROWS_PER_RUN)
-      by_ai, attempted = ai_step(for_ai, keys, categories, purposes)
+      by_ai, attempted, suggested = ai_step(for_ai, keys, categories, purposes)
       unsure = rest.map(&:first) - by_ai.keys
 
       ActiveRecord::Base.transaction do
@@ -93,7 +94,13 @@ module Categorization
         now = Time.current
         by_ai.each do |id, (slug, confidence)|
           pending.where(id:).update_all(category_id: categories[slug].id, categorization_source: "ai",
-                                        confidence:, needs_review: false, ai_attempted_at: now, updated_at: now)
+                                        confidence:, needs_review: false, ai_attempted_at: now,
+                                        suggested_category_id: nil, updated_at: now)
+        end
+        # C2b (§B.1): Claude's below-threshold pick is kept as a suggestion
+        # ("<Category>?" on Review); the row stays uncategorized, in review.
+        suggested.each do |id, slug|
+          pending.where(id:).update_all(suggested_category_id: categories[slug].id, updated_at: now)
         end
         pending.where(id: attempted - by_ai.keys).update_all(ai_attempted_at: now, updated_at: now)
         pending.where(id: unsure).update_all(needs_review: true, updated_at: now)
@@ -119,13 +126,15 @@ module Categorization
     def assign(ids_by_category, source)
       ids_by_category.each do |category_id, ids|
         pending.where(id: ids).update_all(category_id:, categorization_source: source, confidence: nil,
-                                          needs_review: false, updated_at: Time.current)
+                                          needs_review: false, suggested_category_id: nil, updated_at: Time.current)
       end
     end
 
-    # Returns [{ id => [slug, confidence] }, [ids the AI answered]].
+    # Returns [{ id => [slug, confidence] } placed, [ids the AI answered],
+    # { id => slug } below-threshold suggestions].
     def ai_step(rows, keys, categories, purposes)
       placed = {}
+      suggested = {}
       attempted = []
       rows.each_slice(AI_BATCH_SIZE) do |batch|
         items = batch.each_with_index.map do |(id, _, amount, _), index|
@@ -148,12 +157,18 @@ module Categorization
           next if row.nil? || placed.key?(row.first)
 
           confidence = BigDecimal(answer[:confidence].to_s) rescue nil
-          next unless categories.key?(answer[:category_slug].to_s) && confidence&.between?(AI_MIN_CONFIDENCE, 1)
+          slug = answer[:category_slug].to_s
+          # `categories` is the allowlist: never Transfers or legacy.
+          next unless categories.key?(slug) && confidence&.between?(0, 1)
 
-          placed[row.first] = [answer[:category_slug].to_s, confidence]
+          if confidence >= AI_MIN_CONFIDENCE
+            placed[row.first] = [slug, confidence]
+          else
+            suggested[row.first] = slug
+          end
         end
       end
-      [placed, attempted]
+      [placed, attempted, suggested]
     end
 
     def touch_memory(memory, by_memory, keys)

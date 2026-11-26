@@ -30,7 +30,8 @@ class Api::V1::TransferLinksController < ApplicationController
 
       rows = @link.transactions
       previous = rows.to_h do |t|
-        [t.id.to_s, t.slice(:category_id, :categorization_source, :needs_review).merge("confidence" => t.confidence&.to_s)]
+        [t.id.to_s, t.slice(:category_id, :categorization_source, :needs_review, :suggested_category_id)
+                     .merge("confidence" => t.confidence&.to_s)]
       end
       rows.each do |t|
         t.update!(category: transfers, categorization_source: "transfer", confidence: nil, needs_review: false)
@@ -63,7 +64,8 @@ class Api::V1::TransferLinksController < ApplicationController
           next if before.nil? || t.categorization_source != "transfer"
 
           t.update!(category_id: before["category_id"], categorization_source: before["categorization_source"],
-                    needs_review: before["needs_review"], confidence: before["confidence"])
+                    needs_review: before["needs_review"], confidence: before["confidence"],
+                    suggested_category_id: before["suggested_category_id"])
         end
         @link.update!(status: "suggested", confirmed_at: nil, previous_state: nil)
       when "rejected"

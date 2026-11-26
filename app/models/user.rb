@@ -11,6 +11,8 @@ class User < ApplicationRecord
   has_many :merchant_rules, dependent: :destroy
   # TR1: transfer pairs between the user's own accounts.
   has_many :transfer_links
+  # C2b: category corrections, for Undo.
+  has_many :category_corrections
 
   # Users created from a Kinde identity (S2) take names and email from Kinde,
   # which may not provide them; legacy users still need all three.

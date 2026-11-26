@@ -29,11 +29,18 @@ class Transaction < ApplicationRecord
   belongs_to :account
   belongs_to :import, optional: true
   belongs_to :category, optional: true
+  # C2b: Claude's below-threshold guess, shown as "<Category>?" on Review.
+  # Never counts as categorized; cleared whenever a category is set.
+  belongs_to :suggested_category, class_name: "Category", optional: true
+  # C2b: corrections that changed this row; an Undo for a deleted row means
+  # nothing, so they go with it.
+  has_many :category_corrections, dependent: :delete_all, inverse_of: :picked_transaction
 
   normalizes :description, with: ->(text) { text.strip }
   normalizes :external_id, with: ->(id) { id.strip.presence }
 
   before_validation :derive_keys
+  before_validation :clear_suggestion_once_categorized
 
   validates :posted_on, presence: true
   validates :amount, presence: true, numericality: { other_than: 0 }
@@ -48,6 +55,7 @@ class Transaction < ApplicationRecord
   validate :category_matches_source
   validate :category_is_on_the_active_list
   validate :import_is_for_the_same_account
+  validate :suggestion_is_a_real_category
 
   scope :uncategorized, -> { where(category_id: nil) }
 
@@ -93,6 +101,17 @@ class Transaction < ApplicationRecord
     return if posted_on.nil? || amount.nil?
 
     self.base_key = self.class.duplicate_key_for(posted_on:, amount:, normalized_description:, external_id:)
+  end
+
+  def clear_suggestion_once_categorized
+    self.suggested_category_id = nil if category_id.present?
+  end
+
+  def suggestion_is_a_real_category
+    return if suggested_category.nil?
+    return if Category.active_list.where.not(kind: "transfer").exists?(suggested_category.id)
+
+    errors.add(:suggested_category, "must be an active category other than Transfers")
   end
 
   def category_matches_source
