@@ -75,6 +75,11 @@ GEM
       minitest (>= 5.1)
       mutex_m
       tzinfo (~> 2.0)
+    anthropic (2.14.0)
+      base64 (~> 0.1)
+      connection_pool (>= 2, < 4)
+      opentelemetry-api (>= 1.2.4, < 2)
+      standardwebhooks (~> 1.0)
     base64 (0.2.0)
     bcrypt (3.1.20)
     bigdecimal (3.1.8)
@@ -102,6 +107,9 @@ GEM
     irb (1.14.0)
       rdoc (>= 4.0.0)
       reline (>= 0.4.2)
+    jwt (3.3.0)
+      base64
+    logger (1.7.0)
     loofah (2.22.0)
       crass (~> 1.0.2)
       nokogiri (>= 1.12.0)
@@ -137,6 +145,8 @@ GEM
       racc (~> 1.4)
     nokogiri (1.16.7-x86_64-linux)
       racc (~> 1.4)
+    opentelemetry-api (1.11.1)
+      logger
     pg (1.5.7)
     psych (5.1.2)
       stringio
@@ -144,6 +154,8 @@ GEM
       nio4r (~> 2.0)
     racc (1.8.1)
     rack (3.1.7)
+    rack-attack (6.8.0)
+      rack (>= 1.0, < 4)
     rack-cors (2.0.2)
       rack (>= 2.0.0)
     rack-session (2.0.0)
@@ -187,6 +199,7 @@ GEM
       psych (>= 4.0.0)
     reline (0.5.9)
       io-console (~> 0.5)
+    standardwebhooks (1.1.0)
     stringio (3.1.1)
     thor (1.3.1)
     timeout (0.4.1)
@@ -207,12 +220,15 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
+  anthropic (~> 2.14)
   bcrypt (~> 3.1.7)
   bootsnap
   debug
   dotenv-rails
+  jwt (~> 3.1)
   pg (~> 1.1)
   puma (>= 5.0)
+  rack-attack (~> 6.8)
   rack-cors
   rails (~> 7.1.4)
   tzinfo-data

@@ -1,68 +1,54 @@
+# Legacy entries (frozen, plan §2.1), scoped through the caller's budgets (S3-L).
+# A budget_id the caller doesn't own -> 404; an unknown category or a tag the
+# caller can't see -> 422.
 class Api::V1::EntriesController < ApplicationController
+  before_action :require_current_user!
   before_action :set_entry, only: %i[ show update destroy ]
+  before_action :check_references, only: %i[ create update ]
 
   # GET /entries
   def index
-    @entries = Entry.all
-
-    render json: @entries
+    render json: entries_scope
   end
 
   # GET /entries/1
   def show
     render json: @entry
   end
-  # GET /entries/entries_by_budget_with_default_categories
+
+  # GET /entries/entries_by_budget_with_default_categories?budget_id=&category_id=
+  # Entries in one of the caller's budgets whose tags belong to the category.
   def entries_by_budget_with_default_categories
-    # Fetch budget ID and category ID from parameters
-    budget_id = params[:budget_id]
-    category_id = params[:category_id]
+    budget = current_user.budgets.find(params[:budget_id])
 
-    # Get the entries filtered by the selected category only
-    entries = Entry.joins(:tags)
-                  .where(budget_id: budget_id)
-                  .where(tags: { category_id: category_id })  # Only entries tagged with the selected category
-               .distinct
-               .includes(:tags)
+    entries = budget.entries
+                    .joins(:tags)
+                    .where(tags: { category_id: params[:category_id] })
+                    .distinct
+                    .includes(:tags)
 
-
-    # Rails.logger.debug "Fetched entries with tags:\n" + JSON.pretty_generate(
-    #   entries.as_json(
-    #     include: {
-    #       tags: { only: [:id, :name, :category_id] }
-    #     }
-    #   )
-    # )
-      render json: entries.as_json(
-      include: {
-        tags: { only: [:id, :name, :category_id] }
-      }
-    )
+    render json: entries.as_json(include: { tags: { only: [:id, :name, :category_id] } })
   end
+
   # POST /entries
   def create
-  @entry = Entry.new(entry_params)
+    @entry = Entry.new(entry_params.except(:tag_ids))
 
     if @entry.save
-      # Add tags to the entry
-      params[:entry][:tag_ids].each do |tag_id|
-        tag = Tag.find(tag_id)
-        @entry.tags << tag unless @entry.tags.include?(tag)
-      end
-      # Rails.logger.info("entry saved #{@entry.category_id}")
+      sync_tags
       render json: @entry.as_json(include: :tags), status: :created
     else
-      Rails.logger.debug(@entry.errors.full_messages)  
       render json: { errors: @entry.errors.full_messages }, status: :unprocessable_entity
     end
   end
 
   # PATCH/PUT /entries/1
   def update
-    if @entry.update(entry_params)
-      render json: @entry
+    if @entry.update(entry_params.except(:tag_ids))
+      sync_tags if entry_params.key?(:tag_ids)
+      render json: @entry.as_json(include: :tags)
     else
-      render json: @entry.errors, status: :unprocessable_entity
+      render json: { errors: @entry.errors.full_messages }, status: :unprocessable_entity
     end
   end
 
@@ -72,35 +58,47 @@ class Api::V1::EntriesController < ApplicationController
   end
 
   private
-    # Use callbacks to share common setup or constraints between actions.
-    def set_entry
-      @entry = Entry.find(params[:id])
+    def entries_scope
+      Entry.where(budget_id: current_user.budgets.select(:id))
     end
 
-    # Only allow a list of trusted parameters through.
-     def entry_params
-    params.require(:entry).permit(
-      :budget_id, 
-      :start_date, 
-      :amount, 
-      :description, 
-      :frequency, 
-      :custom_frequency_days, 
-      :category_id, 
-      :frequency_number, 
-      :end_date, 
-      tag_ids: [] # This allows an array of tag IDs
-    )
-     end
+    def set_entry
+      @entry = entries_scope.find(params[:id])
+    end
 
-    #  budget_id: budget.id,
-    #   start_date: entryData.start_date,
-    #   amount: entryData.amount,
-    #   description: entryData.description,
-    #   frequency: entryData.frequency,
-    #   custom_frequency_days: entryData.custom_frequency_days,
-    #   category_id: CategoryIdMap[selectedCategory],
-    #   frequency_number: entryData.frequency_number,
-    #   end_date: entryData.end_date,
-    #   tag_ids: [tagId], // matching join table for entries_tags
+    # Runs before any write: the target budget must be the caller's (404),
+    # and referenced categories/tags must exist and be visible (422).
+    def check_references
+      # A blank budget_id is left to the model's validation (422).
+      current_user.budgets.find(entry_params[:budget_id]) if entry_params[:budget_id].present?
+
+      category_id = entry_params[:category_id]
+      return render_invalid_reference(:category_id) if category_id.present? && !Category.exists?(category_id)
+
+      tag_ids = Array(entry_params[:tag_ids]).compact_blank
+      render_invalid_reference(:tag_ids) if tag_ids.any? && visible_tags.where(id: tag_ids).count != tag_ids.uniq.size
+    end
+
+    def visible_tags
+      Tag.visible_to(current_user)
+    end
+
+    def entry_params
+      params.require(:entry).permit(
+        :budget_id,
+        :start_date,
+        :amount,
+        :description,
+        :frequency,
+        :custom_frequency_days,
+        :category_id,
+        :frequency_number,
+        :end_date,
+        tag_ids: []
+      )
+    end
+
+    def sync_tags
+      @entry.tags = visible_tags.where(id: entry_params[:tag_ids].to_a)
+    end
 end

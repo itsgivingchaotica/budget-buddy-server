@@ -1,7 +1,16 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+# S3-L: `one` belongs to users(:one) (the default test token), `two` to
+# users(:two); `global` is a default tag visible to everyone, owned by no one.
 
 one:
   name: MyString
+  user: one
 
 two:
   name: MyString
+  user: two
+
+global:
+  name: Groceries
+  default_tag: true
+  category: expense

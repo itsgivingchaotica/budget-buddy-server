@@ -1,0 +1,10 @@
+# C2: one completed import per user, for ownership checks.
+one_nov:
+  account: one_checking
+  filename: nov.csv
+  status: completed
+
+two_nov:
+  account: two_checking
+  filename: nov.csv
+  status: completed

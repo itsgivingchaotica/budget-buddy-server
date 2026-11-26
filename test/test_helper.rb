@@ -1,9 +1,15 @@
 ENV["RAILS_ENV"] ||= "test"
 require_relative "../config/environment"
 require "rails/test_help"
+require_relative "support/auth_test_helper"
+
+AuthTestHelper.install_verifier!
+AuthTestHelper.install_profile_fetcher!
 
 module ActiveSupport
   class TestCase
+    include AuthTestHelper
+
     # Run tests in parallel with specified workers
     parallelize(workers: :number_of_processors)
 

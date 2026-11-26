@@ -1,0 +1,30 @@
+Budget Buddy - generic CSV format (PO-18)
+
+One file = one account. You choose the account when you upload.
+
+File: UTF-8 text, comma-separated, with a header row. Values containing a
+comma go in double quotes, e.g. "Rent - Example Property, LLC".
+Limits: 2 MB and 10,000 rows per file.
+
+Columns (any order; names are not case-sensitive):
+  date            required. YYYY-MM-DD, or month first: M/D/YYYY or
+                  MM/DD/YYYY (e.g. 2/3/2026, 02/03/2026 = 3 February 2026).
+                  The year must have 4 digits. Day-first dates
+                  (e.g. 31/12/2026) are not accepted. Use the posted date.
+  description     required. Up to 255 characters.
+  amount          required. Negative = money out of the account,
+                  positive = money in. "$", commas and (12.34) for -12.34
+                  are allowed; at most 2 decimals. US dollars only.
+                  Credit cards: purchases negative, payments to the card
+                  positive. Rows with 0.00 are skipped.
+  transaction_id  optional. Your bank's ID for the row; used to spot
+                  duplicates when present.
+  balance         optional. Running balance after the row.
+
+Other columns are ignored. Leave out pending transactions: export only
+posted ones.
+
+Change log
+  2026-11-24  Dates may use one-digit month and day (M/D/YYYY) as well as
+              MM/DD/YYYY. Two-digit years and day-first dates are still
+              rejected.

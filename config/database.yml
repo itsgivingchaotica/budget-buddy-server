@@ -21,7 +21,9 @@ default: &default
 
 development:
   <<: *default
-  database: bb_server_development
+  # DB0: fresh synthetic-only MVP database by default. The pre-MVP database is
+  # kept (not migrated); select it with BB_DEV_DATABASE=bb_server_development.
+  database: <%= ENV.fetch("BB_DEV_DATABASE", "bb_server_mvp_development") %>
 
   # The specified database role being used to connect to PostgreSQL.
   # To create additional roles in PostgreSQL see `$ createuser --help`.

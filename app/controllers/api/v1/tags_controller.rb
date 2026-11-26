@@ -1,24 +1,29 @@
+# Legacy tags (frozen, plan §2.1), scoped (S3-L): the caller sees the global
+# default tags plus their own; only their own non-default tags can change.
 class Api::V1::TagsController < ApplicationController
+  before_action :require_current_user!
+  before_action :set_visible_tag, only: %i[ show update destroy ]
+  before_action :require_own_tag, only: %i[ update destroy ]
+
   # GET /tags
   def index
-    @tags = Tag.all
-    render json: @tags
+    render json: Tag.visible_to(current_user)
   end
 
+  # GET /tags/default_tags (any user_id param is ignored: defaults are global)
   def default_tags
-    @default_tags = Tag.where(default_tag: true, user_id: 1)
-    render json: @default_tags
+    render json: Tag.where(default_tag: true)
   end
 
   # GET /tags/1
   def show
-    @tag = Tag.find(params[:id])
     render json: @tag
   end
 
-  # POST /tags
+  # POST /tags -> always the caller's own, never a default tag
   def create
-    @tag = Tag.new(tag_params)
+    @tag = Tag.new(tag_params.merge(user_id: current_user.id, default_tag: false))
+    return render_invalid_reference(:category_id) if @tag.category_id.present? && !Category.exists?(@tag.category_id)
 
     if @tag.save
       render json: @tag, status: :created
@@ -29,7 +34,7 @@ class Api::V1::TagsController < ApplicationController
 
   # PATCH/PUT /tags/1
   def update
-    @tag = Tag.find(params[:id])
+    return render_invalid_reference(:category_id) if tag_params[:category_id].present? && !Category.exists?(tag_params[:category_id])
 
     if @tag.update(tag_params)
       render json: @tag
@@ -40,14 +45,21 @@ class Api::V1::TagsController < ApplicationController
 
   # DELETE /tags/1
   def destroy
-    @tag = Tag.find(params[:id])
     @tag.destroy!
   end
 
   private
 
-  # Only allow a list of trusted parameters through.
+  def set_visible_tag
+    @tag = Tag.visible_to(current_user).find(params[:id])
+  end
+
+  # Default tags are visible to everyone but belong to no one.
+  def require_own_tag
+    render_forbidden unless @tag.user_id == current_user.id && !@tag.default_tag
+  end
+
   def tag_params
-    params.require(:tag).permit(:name)
+    params.require(:tag).permit(:name, :category_id)
   end
 end

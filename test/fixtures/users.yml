@@ -1,15 +1,14 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+# `one` is the user behind the default test token (AuthTestHelper, sub kp_test_user).
 
 one:
   first_name: MyString
   last_name: MyString
-  email: MyString
-  mobile_number: MyString
-  password_digest: MyString
+  email: one@example.com
+  kinde_id: kp_test_user
 
 two:
   first_name: MyString
   last_name: MyString
-  email: MyString
-  mobile_number: MyString
-  password_digest: MyString
+  email: two@example.com
+  kinde_id: kp_other_user

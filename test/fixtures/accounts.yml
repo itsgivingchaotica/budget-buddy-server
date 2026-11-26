@@ -1,0 +1,12 @@
+# DM-2 (accounts). `one_checking` belongs to users(:one), the default test token.
+one_checking:
+  user: one
+  name: Everyday Checking
+  kind: checking
+  purpose: spending
+
+two_checking:
+  user: two
+  name: Everyday Checking
+  kind: checking
+  purpose: spending

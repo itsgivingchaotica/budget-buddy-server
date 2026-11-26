@@ -1,6 +1,14 @@
 Rails.application.routes.draw do
   namespace :api do
     namespace :v1 do
+      get "me", to: "me#show"
+      resources :accounts, only: %i[index show create update destroy] do
+        resources :imports, only: %i[create] # I2
+      end
+      resources :transactions, only: %i[index update destroy] do # I2
+        post :categorize, on: :collection # S4-min / AI2
+      end
+
       resources :entries do
         collection do
           get "entries_by_budget_with_default_categories"

@@ -1,0 +1,7 @@
+# Legacy-style category (pre-MVP): kind legacy, inactive, category_type default.
+expense:
+  name: Expense
+  category_type: default
+  kind: legacy
+  active: false
+  slug: legacy-expense
