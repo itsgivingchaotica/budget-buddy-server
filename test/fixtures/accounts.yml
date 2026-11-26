@@ -10,3 +10,10 @@ two_checking:
   name: Everyday Checking
   kind: checking
   purpose: spending
+
+# TR1: a second account for users(:two), for an ownership-matrix transfer pair.
+two_savings:
+  user: two
+  name: Two Savings
+  kind: savings
+  purpose: savings

@@ -85,10 +85,14 @@ class Api::V1::TransactionsController < ApplicationController
 
   # DELETE /transactions/1 - removes the row. Importing the same file again
   # would bring it back, since nothing remembers the deletion.
-  # Rule for later (PO, 2026-11-24): once TR1 (transfer matching) and G1
-  # (goals) exist, a transaction in a transfer link or linked from a goal
-  # contribution must return 422 and delete nothing, with tests then.
+  # PO rule (2026-11-24): a transaction in any transfer link (TR1) can't be
+  # deleted: 422, nothing deleted. (Goal contributions get the same rule
+  # with G1.)
   def destroy
+    if TransferLink.involving(@transaction.id).exists?
+      return render json: { error: "in_transfer_link" }, status: :unprocessable_entity
+    end
+
     @transaction.destroy!
     head :no_content
   end
@@ -113,12 +117,15 @@ class Api::V1::TransactionsController < ApplicationController
 
   # AI3: the same user's other rows from this merchant that are still
   # waiting for review get the new category too (source "memory"). Rows the
-  # user chose themselves, rows not waiting for review and rows in archived
-  # accounts are left alone. Returns how many changed.
+  # user chose themselves, rows not waiting for review, rows in archived
+  # accounts and rows in a suggested or confirmed transfer pair (TR1) are
+  # left alone. Returns how many changed.
   def apply_to_waiting_rows!(category)
+    in_transfer_pairs = TransferLink.where(user: current_user).active
+                                    .pluck(:outflow_transaction_id, :inflow_transaction_id).flatten
     candidates = current_user.transactions.joins(:account).merge(Account.active)
                              .where(needs_review: true).where.not(categorization_source: "user")
-                             .where.not(id: @transaction.id)
+                             .where.not(id: [@transaction.id, *in_transfer_pairs])
                              .pluck(:id, :normalized_description)
     ids = candidates.select { |_, normalized| Categorization::MerchantKey.for(normalized) == merchant_key }.map(&:first)
     return 0 if ids.empty?

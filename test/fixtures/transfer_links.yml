@@ -1,0 +1,7 @@
+# TR1: users(:two)'s suggested pair (ownership matrix).
+two_pair:
+  user: two
+  outflow_transaction: two_transfer_out
+  inflow_transaction: two_transfer_in
+  status: suggested
+  days_apart: 1

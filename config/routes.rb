@@ -5,6 +5,13 @@ Rails.application.routes.draw do
       resources :accounts, only: %i[index show create update destroy] do
         resources :imports, only: %i[create] # I2
       end
+      # TR1 (transfer matching)
+      resources :transfer_links, only: %i[index destroy] do
+        member do
+          post :confirm
+          post :reject
+        end
+      end
       resources :transactions, only: %i[index update destroy] do # I2
         post :categorize, on: :collection # S4-min / AI2
       end

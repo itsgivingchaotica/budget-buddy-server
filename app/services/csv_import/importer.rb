@@ -66,6 +66,10 @@ module CsvImport
       # AI1 (rules-based categorization), after the import is saved, so a
       # categorization problem never loses imported rows.
       categorized = Categorization::Pipeline.call(user: @account.user, scope: import.transactions)
+      # TR1: suggest transfer pairs around the imported dates.
+      if import.data_from && import.data_through
+        TransferMatcher.call(user: @account.user, from: import.data_from, to: import.data_through)
+      end
       [import, result, categorized]
     end
 
