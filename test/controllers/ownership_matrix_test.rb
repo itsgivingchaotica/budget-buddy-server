@@ -59,6 +59,10 @@ class OwnershipMatrixTest < ActionDispatch::IntegrationTest
     "transactions#update with unknown category" =>
                                     [:patch,  -> { api_v1_transaction_url(transactions(:one_coffee)) }, { transaction: { category: "no-such-slug" } }, :unprocessable_entity],
 
+    # --- category corrections (C2b) ---------------------------------------------------
+    "category_corrections#undo other" =>
+                                    [:post,   -> { undo_api_v1_category_correction_url(category_corrections(:two_fix)) }, nil, :not_found],
+
     # --- transfer links (TR1) ------------------------------------------------------
     "transfer_links#confirm other" =>
                                     [:post,   -> { confirm_api_v1_transfer_link_url(transfer_links(:two_pair)) }, nil, :not_found],
@@ -75,7 +79,7 @@ class OwnershipMatrixTest < ActionDispatch::IntegrationTest
 
   # A fingerprint of everything the rows could touch.
   def snapshot
-    [User, Budget, Entry, Tag, Category, Account, Import, Transaction, MerchantRule, TransferLink].to_h do |model|
+    [User, Budget, Entry, Tag, Category, Account, Import, Transaction, MerchantRule, TransferLink, CategoryCorrection].to_h do |model|
       [model.name, model.order(:id).map { |r| r.attributes.except("updated_at") }]
     end.merge("EntriesTags" => Entry.order(:id).map { |e| e.tag_ids.sort })
   end
@@ -114,6 +118,9 @@ class OwnershipMatrixTest < ActionDispatch::IntegrationTest
 
     get api_v1_transfer_links_url(status: "suggested"), headers: auth_headers, as: :json
     assert_equal [], response.parsed_body["transfer_links"]
+
+    get review_groups_api_v1_transactions_url, headers: auth_headers, as: :json
+    assert_not_includes response.parsed_body["groups"].flat_map { |g| g["accounts"].map { |a| a["id"] } }, accounts(:two_checking).id
   end
 
   # --- injected owner ids are ignored ---------------------------------------------

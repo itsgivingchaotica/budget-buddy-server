@@ -47,7 +47,8 @@ class TransferLinksControllerTest < ActionDispatch::IntegrationTest
       assert_equal [@transfers.id, "transfer", false], [t.category_id, t.categorization_source, t.needs_review]
     end
     stored = @link.reload.previous_state[@out.id.to_s]
-    assert_equal({ "category_id" => nil, "categorization_source" => "none", "needs_review" => true, "confidence" => nil }, stored)
+    assert_equal({ "category_id" => nil, "categorization_source" => "none", "needs_review" => true, "confidence" => nil,
+                   "suggested_category_id" => nil }, stored)
   end
 
   test "confirm twice is a 409" do

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_25_100000) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_25_120100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -74,6 +74,22 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_25_100000) do
     t.check_constraint "kind::text = ANY (ARRAY['spending'::character varying, 'income'::character varying, 'transfer'::character varying, 'legacy'::character varying]::text[])", name: "categories_kind_check"
     t.check_constraint "need_want IS NULL OR (need_want::text = ANY (ARRAY['need'::character varying, 'want'::character varying]::text[]))", name: "categories_need_want_check"
     t.check_constraint "recurrence_label IS NULL OR (recurrence_label::text = ANY (ARRAY['one_time'::character varying, 'recurring'::character varying]::text[]))", name: "categories_recurrence_label_check"
+  end
+
+  create_table "category_corrections", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "transaction_id", null: false
+    t.bigint "new_category_id", null: false
+    t.string "merchant_key", null: false
+    t.jsonb "previous", default: [], null: false
+    t.jsonb "merchant_rule_before"
+    t.datetime "undone_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["new_category_id"], name: "index_category_corrections_on_new_category_id"
+    t.index ["transaction_id"], name: "index_category_corrections_on_transaction_id"
+    t.index ["user_id"], name: "index_category_corrections_on_user_id"
+    t.check_constraint "jsonb_typeof(previous) = 'array'::text", name: "category_corrections_previous_array_check"
   end
 
   create_table "entries", force: :cascade do |t|
@@ -184,6 +200,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_25_100000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.datetime "ai_attempted_at"
+    t.bigint "suggested_category_id"
     t.index ["account_id", "base_key", "occurrence"], name: "index_transactions_on_account_base_key_occurrence", unique: true
     t.index ["account_id", "external_id"], name: "index_transactions_on_account_external_id", unique: true, where: "(external_id IS NOT NULL)"
     t.index ["account_id", "posted_on"], name: "index_transactions_on_account_id_and_posted_on"
@@ -191,6 +208,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_25_100000) do
     t.index ["account_id"], name: "index_transactions_on_account_id"
     t.index ["category_id"], name: "index_transactions_on_category_id"
     t.index ["import_id"], name: "index_transactions_on_import_id"
+    t.index ["suggested_category_id"], name: "index_transactions_on_suggested_category_id"
     t.check_constraint "(categorization_source::text = 'none'::text) = (category_id IS NULL)", name: "transactions_source_matches_category_check"
     t.check_constraint "amount <> 0::numeric", name: "transactions_amount_nonzero_check"
     t.check_constraint "base_key::text ~ '^[0-9a-f]{64}$'::text", name: "transactions_base_key_format_check"
@@ -200,6 +218,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_25_100000) do
     t.check_constraint "length(btrim(description::text)) >= 1 AND length(btrim(description::text)) <= 255", name: "transactions_description_length_check"
     t.check_constraint "length(normalized_description::text) >= 1 AND length(normalized_description::text) <= 255", name: "transactions_normalized_description_length_check"
     t.check_constraint "occurrence >= 1", name: "transactions_occurrence_check"
+    t.check_constraint "suggested_category_id IS NULL OR category_id IS NULL", name: "transactions_suggestion_only_when_uncategorized_check"
   end
 
   create_table "transfer_links", force: :cascade do |t|
@@ -238,6 +257,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_25_100000) do
   add_foreign_key "accounts", "users"
   add_foreign_key "ai_usage", "users"
   add_foreign_key "budgets", "users"
+  add_foreign_key "category_corrections", "categories", column: "new_category_id"
+  add_foreign_key "category_corrections", "transactions"
+  add_foreign_key "category_corrections", "users"
   add_foreign_key "entries", "budgets"
   add_foreign_key "entries", "categories"
   add_foreign_key "entries_tags", "budgets"
@@ -249,6 +271,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_25_100000) do
   add_foreign_key "tags", "categories"
   add_foreign_key "transactions", "accounts"
   add_foreign_key "transactions", "categories"
+  add_foreign_key "transactions", "categories", column: "suggested_category_id"
   add_foreign_key "transactions", "imports", column: ["import_id", "account_id"], primary_key: ["id", "account_id"], name: "fk_transactions_import_same_account"
   add_foreign_key "transfer_links", "transactions", column: "inflow_transaction_id"
   add_foreign_key "transfer_links", "transactions", column: "outflow_transaction_id"

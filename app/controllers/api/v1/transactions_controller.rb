@@ -16,7 +16,7 @@ class Api::V1::TransactionsController < ApplicationController
   # GET /transactions?account_id=&import_id=&from=&to=&category=&needs_review=&page=&per_page=
   # category: a slug, or "none" for uncategorized rows.
   def index
-    scope = current_user.transactions.includes(:category)
+    scope = current_user.transactions.includes(:category, :suggested_category)
     scope = scope.where(account_id: current_user.accounts.find(params[:account_id]).id) if params[:account_id].present?
     # C2: the import result screen counts one import's rows. Another user's import -> 404.
     scope = scope.where(import_id: current_user.imports.find(params[:import_id]).id) if params[:import_id].present?
@@ -30,7 +30,9 @@ class Api::V1::TransactionsController < ApplicationController
     per_page = params.fetch(:per_page, DEFAULT_PER_PAGE).to_i.clamp(1, MAX_PER_PAGE)
     rows = scope.order(posted_on: :desc, id: :desc).offset((page - 1) * per_page).limit(per_page)
 
-    render json: { transactions: rows.map { |t| transaction_json(t) }, page:, per_page:, total: scope.count }
+    in_suggested_pairs = TransferLink.where(user: current_user, status: "suggested")
+                                     .pluck(:outflow_transaction_id, :inflow_transaction_id).flatten.to_set
+    render json: { transactions: rows.map { |t| transaction_json(t, in_suggested_pairs) }, page:, per_page:, total: scope.count }
   end
 
   # POST /transactions/categorize - categorize the caller's uncategorized
@@ -75,12 +77,17 @@ class Api::V1::TransactionsController < ApplicationController
     # Transfers is set only by confirming a transfer pair (TR1).
     return render json: { error: "transfer_category_reserved" }, status: :unprocessable_entity if category.transfer?
 
-    also_updated = ActiveRecord::Base.transaction do
-      @transaction.update!(category:, categorization_source: "user", confidence: nil, needs_review: false)
-      remember_merchant!(category)
-      apply_to_waiting_rows!(category)
-    end
-    render json: transaction_json(@transaction).merge(also_updated:)
+    # AI3 + C2b: set the category, teach merchant memory, update the
+    # merchant's other waiting rows, and record the correction for Undo.
+    correction, also_updated = Categorization::Correction.apply(user: current_user, transaction: @transaction, category:)
+    render json: transaction_json(@transaction.reload).merge(also_updated:, correction_id: correction.id)
+  end
+
+  # GET /transactions/review_groups - the Review screen (handoff #05 §B.3):
+  # rows waiting for review, not in a suggested transfer pair, grouped by
+  # merchant, with a suggestion and alternatives per group.
+  def review_groups
+    render json: { remaining: Categorization::Review.remaining(current_user), groups: Categorization::Review.groups(current_user) }
   end
 
   # DELETE /transactions/1 - removes the row. Importing the same file again
@@ -115,39 +122,7 @@ class Api::V1::TransactionsController < ApplicationController
     current_user.merchant_rules.where(merchant_key:).delete_all
   end
 
-  # AI3: the same user's other rows from this merchant that are still
-  # waiting for review get the new category too (source "memory"). Rows the
-  # user chose themselves, rows not waiting for review, rows in archived
-  # accounts and rows in a suggested or confirmed transfer pair (TR1) are
-  # left alone. Returns how many changed.
-  def apply_to_waiting_rows!(category)
-    in_transfer_pairs = TransferLink.where(user: current_user).active
-                                    .pluck(:outflow_transaction_id, :inflow_transaction_id).flatten
-    candidates = current_user.transactions.joins(:account).merge(Account.active)
-                             .where(needs_review: true).where.not(categorization_source: "user")
-                             .where.not(id: [@transaction.id, *in_transfer_pairs])
-                             .pluck(:id, :normalized_description)
-    ids = candidates.select { |_, normalized| Categorization::MerchantKey.for(normalized) == merchant_key }.map(&:first)
-    return 0 if ids.empty?
 
-    Transaction.where(id: ids).update_all(category_id: category.id, categorization_source: "memory", confidence: nil,
-                                          needs_review: false, updated_at: Time.current)
-  end
-
-  # One atomic INSERT ... ON CONFLICT, so two requests at once can't clash;
-  # `hits` restarts when the category changes.
-  def remember_merchant!(category)
-    now = Time.current
-    MerchantRule.upsert(
-      { user_id: current_user.id, merchant_key:,
-        category_id: category.id, hits: 0, created_at: now, updated_at: now },
-      unique_by: %i[user_id merchant_key],
-      on_duplicate: Arel.sql(<<~SQL.squish)
-        hits = CASE WHEN merchant_rules.category_id = EXCLUDED.category_id THEN merchant_rules.hits ELSE 0 END,
-        category_id = EXCLUDED.category_id, updated_at = EXCLUDED.updated_at
-      SQL
-    )
-  end
 
   def refuse_if_archived
     render json: { error: "archived" }, status: :unprocessable_entity if @transaction.account.archived?
@@ -170,12 +145,18 @@ class Api::V1::TransactionsController < ApplicationController
     scope
   end
 
-  def transaction_json(t)
+  # C2b: `suggested_category` (slug) is Claude's unsure pick, shown as
+  # "<Category>?"; `transfer_suggested` marks rows in a suggested transfer
+  # pair ("Transfer?").
+  def transaction_json(t, in_suggested_pairs = nil)
+    in_suggested_pairs ||= TransferLink.where(user: current_user, status: "suggested").involving(t.id)
+                                       .pluck(:outflow_transaction_id, :inflow_transaction_id).flatten.to_set
     {
       id: t.id, account_id: t.account_id, import_id: t.import_id, posted_on: t.posted_on,
       amount: money(t.amount), description: t.description, external_id: t.external_id,
-      category: t.category&.slug, categorization_source: t.categorization_source,
-      confidence: t.confidence&.to_s("F"), needs_review: t.needs_review, created_at: t.created_at
+      category: t.category&.slug, suggested_category: t.suggested_category&.slug,
+      categorization_source: t.categorization_source, confidence: t.confidence&.to_s("F"),
+      needs_review: t.needs_review, transfer_suggested: in_suggested_pairs.include?(t.id), created_at: t.created_at
     }
   end
 end
