@@ -6,6 +6,8 @@ module MoneyJson
   def money(value)
     return nil if value.nil?
 
-    format("%.2f", value.to_d.round(2))
+    rounded = value.to_d.round(2)
+    rounded = BigDecimal("0") if rounded.zero? # never "-0.00" (negated zeros, tiny negatives)
+    format("%.2f", rounded)
   end
 end

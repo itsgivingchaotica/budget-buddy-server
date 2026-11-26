@@ -29,6 +29,12 @@ class AnalyticsTest < ActionDispatch::IntegrationTest
     assert_equal "40.00", call(api_v1_analytics_summary_url(from: "2026-11-01", to: "2026-11-26", category: "dining-out"))["total_spent"]
   end
 
+  test "zero amounts are never \"-0.00\"" do
+    body = call(api_v1_analytics_summary_url(from: "2026-10-01", to: "2026-10-31", category: "dining-out"))
+    assert_equal "0.00", body["uncategorized"]
+    assert_equal "0.00", call(api_v1_analytics_summary_url(from: "2026-07-01", to: "2026-07-31"))["total_spent"]
+  end
+
   test "summary validation: dates, order, at most 366 days, known category" do
     [{ from: "2026-11-01" }, { from: "Nov 1", to: "2026-11-26" }, { from: "2026-11-26", to: "2026-11-01" },
      { from: "2025-10-31", to: "2026-11-01" }].each do |params| # the last: 367 days
