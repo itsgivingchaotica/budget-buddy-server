@@ -74,7 +74,7 @@ class SpendingAnalyticsTest < ActiveSupport::TestCase
     assert_equal [["groceries", b("130"), b("120"), b("10"), "near"], ["dining-out", b("35"), b("40"), b("-5"), "over"],
                   ["entertainment", b("0"), b("0"), b("0"), "under"]],
                  r[:categories].map { |c| c.values_at(:category, :budget, :spent, :remaining, :status) }
-    assert_equal({ budget: b("165"), spent: b("160"), remaining: b("5") }, r[:totals])
+    assert_equal({ budget: b("165"), spent: b("160"), remaining: b("5"), everyday_spent: b("203") }, r[:totals], "everyday: 160 + 25 unbudgeted + 18 uncategorized")
     assert_equal [{ category: "personal-care", name: "Personal Care", spent: b("25") }], r[:unbudgeted]
     assert_equal [b("18"), true, d("2026-11-20"), "2026-11"], r.values_at(:uncategorized, :plan_exists, :data_through, :month)
   end

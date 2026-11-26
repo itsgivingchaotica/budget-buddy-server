@@ -6,7 +6,7 @@ class Demo::HomeStateTest < ActiveSupport::TestCase
 
   setup do
     @user = users(:one)
-    { "groceries" => 1, "dining-out" => 2, "transportation" => 3, "entertainment" => 4 }.each do |slug, pos|
+    { "groceries" => 1, "dining-out" => 2, "transportation" => 3, "entertainment" => 4, "clothing" => 5 }.each do |slug, pos|
       Category.create!(name: slug.titleize, slug:, kind: "spending", fixed_variable: "variable", active: true, position: pos)
     end
     { "rent" => 10, "utilities" => 11, "subscriptions" => 12 }.each do |slug, pos|
@@ -48,5 +48,23 @@ class Demo::HomeStateTest < ActiveSupport::TestCase
     assert_equal "no_plan", o[:state]
     assert_equal [0, 0, 0], [@user.category_budgets.count, @user.obligations.count, @user.goals.count]
     assert transactions(:one_coffee).reload, "imported history stays"
+  end
+
+  test "plan: an over row, No budget yet, uncategorized, a paid bill, three goals incl. a debt" do
+    run_state("plan")
+    r = SpendingAnalytics.budget_vs_actual(@user, month: Date.new(2026, 11, 1))
+    dining = r[:categories].find { |c| c[:category] == "dining-out" }
+    # this week 6.40 + 14.75, plus 40.00 on the 1st = 61.15; budget = 61.15 - 6, down = 55
+    assert_equal [BigDecimal("61.15"), BigDecimal("55"), "over"], dining.values_at(:spent, :budget, :status)
+    assert(r[:categories].reject { |c| c[:category] == "dining-out" }.all? { |c| c[:status] == "under" }, "only Dining Out is over")
+    assert_equal [["clothing", BigDecimal("63.5")]], r[:unbudgeted].map { |u| u.values_at(:category, :spent) }
+    assert_equal BigDecimal("25"), r[:uncategorized], "the transfer to a person went to review"
+    assert_equal ["Car fund", "Car insurance", "Pay off the card"], @user.goals.pluck(:name).sort
+    card = @user.goals.find_by!(name: "Pay off the card")
+    assert_equal [BigDecimal("1840"), 28], [card.balance, GoalCalculator.for(card, now: NOW).call[:percent_paid]]
+    electric = @user.obligations.find_by!(name: "Electric")
+    assert_equal "paid", Bills.current(electric, today: Date.new(2026, 11, 26))[:status]
+    run_state("plan")
+    assert_equal 3, @user.goals.count, "running it again replaces, not adds"
   end
 end
