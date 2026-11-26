@@ -17,6 +17,7 @@
 #   DELETE /goals/:id/contributions/:cid  undo
 class Api::V1::GoalsController < ApplicationController
   include MoneyJson
+  include AnalyticsJson
 
   FIELDS = %i[name target_amount target_date starting_balance apr monthly_payment].freeze
 
@@ -115,17 +116,7 @@ class Api::V1::GoalsController < ApplicationController
       target_amount: money(g.target_amount), target_date: g.target_date, starting_balance: money(g.starting_balance),
       apr: money(g.apr), monthly_payment: money(g.monthly_payment),
       saved: money(g.saved), balance: money(g.balance), remaining: money(g.remaining),
-      progress: progress_json(GoalCalculator.for(g, what_if_extra: @what_if).call) }
-  end
-
-  # Money as strings; dates, counts, percents and flags as they are.
-  def progress_json(value)
-    case value
-    when BigDecimal then money(value)
-    when Hash then value.transform_values { |v| progress_json(v) }
-    when Array then value.map { |v| progress_json(v) }
-    else value
-    end
+      progress: analytics_json(GoalCalculator.for(g, what_if_extra: @what_if).call) }
   end
 
   def contribution_json(c)

@@ -6,7 +6,7 @@ Running log of product and architecture decisions. Explicit decisions by the pro
 
 **Reference state (2026-11-25, from Claude Code's reports):** Security S1a–S3, DM-1 through AI2, DEMO-G, S4-min and `demo:reset` (`ec567da`) committed on the server. Client: UP1 Expo upgrade to SDK 54 committed (`7cc9083`); LG1 new tab layout passed the owner's phone check, commit approved. C2, TR1 (transfer matching) and C2b (review and transfer screens) merged to main via PRs with CI; EV1 (categorization eval) built, harder golden set next. MVP runs on a fresh synthetic-only database; the old database is untouched. Project Knowledge does not update automatically.
 
-**Repo copies:** Claude Code reads copies of these product docs in the project root's `docs/product/` folder. Paths written `claude/…` here correspond to `docs/product/…` in the repo (PO-19). Reference screenshots of canvas screens are in `docs/product/screens/`.
+**Repo copies (updated 2026-11-26):** all project docs now live in the **server repo**, `bb-server/docs/`: product docs in `bb-server/docs/product/` (screenshots in `product/screens/`), `GLOSSARY.md`, `ARCHITECTURE.md`, `PROGRESS.md`, `IMPLEMENTATION_PLAN.md` and `evals/` in `bb-server/docs/`. The client repo (`bb-client`) has no docs folder; its README links to the server repo's docs. Paths written `claude/…` here correspond to `bb-server/docs/product/…` (PO-19).
 
 ---
 
@@ -16,11 +16,11 @@ Running log of product and architecture decisions. Explicit decisions by the pro
 
 | Document | Role | Maintained by |
 |---|---|---|
-| `docs/ARCHITECTURE.md` | **As-built** record; Claude Code added an "As-built changes since the audit" section (S1a–DM-1) | Claude Code |
+| `bb-server/docs/ARCHITECTURE.md` | **As-built** record; Claude Code added an "As-built changes since the audit" section (S1a–DM-1) | Claude Code |
 | `claude/TARGET_MVP_ARCHITECTURE.md` | **Intended** architecture, with built/designed status labels | Claude Project; Claude Code flags differences |
 | `claude/GLOSSARY.md` | One sentence per task ID and ID family | Claude Project |
-| `docs/IMPLEMENTATION_PLAN.md` | Rev. 4.1 (approved) | Claude Code |
-| `docs/PROGRESS.md` | Progress log, PO questions, auth status | Claude Code |
+| `bb-server/docs/IMPLEMENTATION_PLAN.md` | Rev. 4.1 (approved) | Claude Code |
+| `bb-server/docs/PROGRESS.md` | Progress log, PO questions, auth status | Claude Code |
 | `claude/PRODUCT_BRIEF.md` | Approved Phase 2 summary | Claude Project + owner |
 | `claude/MVP_SCOPE.md` | Approved scope with milestones (D-018) | Claude Project + owner |
 | `claude/SPEC_LEFT_TO_SPEND.md` | Approved Home outlook spec | Claude Project + owner |
@@ -181,7 +181,7 @@ Left to spend over the calendar week; uncategorized counts as spending; conserva
 
 ## D-027 — Deterministic first, AI as assistant (engineering principle)
 
-**Status:** Principle approved in spirit (owner request, 2026-11-26); the three changes below are Proposed.
+**Status:** Approved (owner, 2026-11-26), including the three changes below.
 
 Following advice from an experienced AI engineer: build scripts and deterministic systems first, use AI to connect and assist them, and make sure the developer understands and verifies what gets built. Budget Buddy already follows the core rule (D-002 "AI proposes, Rails calculates, user decides"); this makes it a standing rule for every feature.
 
@@ -199,10 +199,21 @@ Following advice from an experienced AI engineer: build scripts and deterministi
 
 **AI feature contract** (every AI feature must state all of these in its spec): inputs (and what is deliberately excluded); what the AI decides; what code decides; validation of the output; fallback when it fails; how it's evaluated (labels independent of the system); what's logged (no financial text).
 
-**Proposed changes:**
-1. **Show where a category came from.** Rows categorized by Claude without review get a small "by coach" marker in Activity, and a filter to review them. The user can always see and override AI decisions, not just uncertain ones.
-2. **Understanding check per PR.** Each PR report from Claude Code lists the 2–3 files that hold the core logic, a plain-language walkthrough, and 3 questions the owner should be able to answer. The owner reads those files before approving.
-3. **Figures audit script for Q1.** A rake task that computes the same figures through Home, Plan and the coach's tools for the demo user and fails if any differ.
+**Changes (Approved 2026-11-26):**
+1. **Show where a category came from.** Rows categorized by Claude without review get a small "by coach" marker in Activity, and a filter to review them (with C8 or as a small follow-up to C2b, Claude Code's choice). The user can always see and override AI decisions, not just uncertain ones.
+2. **Understanding check per PR.** Each PR report from Claude Code lists the 2–3 files that hold the core logic, a plain-language walkthrough, and 3 questions the owner should be able to answer. The owner reads those files before approving. Started with the G2 (goal and debt maths) PR.
+3. **Figures audit script for Q1.** A rake task that computes the same figures through Home, Plan and the coach's tools for the demo user and fails if any differ. Built in step 9 (Q1 end-to-end check).
+
+---
+
+## D-028 — Uncategorized money in, refunds across categories, unbudgeted spending
+
+**Status:** Approved (owner, 2026-11-26). Raised by Claude Code while building AN1/AN2 (spending analytics).
+
+- **Uncategorized rows count only money going out** (Home, Plan and the coach alike). The original `SPEC_LEFT_TO_SPEND.md` §3.2 netted all flexible and uncategorized rows, so an uncategorized paycheck could cancel a week's spending. Spec amended (§2, §3.2, §4.2) with worked examples 10–11.
+- **Each flexible category floors at $0 separately**, so a refund in one category can't offset spending in another.
+- **Unbudgeted spending:** budget vs actual lists flexible categories with spending but no budget; the Plan tab shows them in a "No budget yet" group where tapping one sets a budget (`SCREENS_PLAN.md` §3).
+- **Other AN1 choices accepted:** "near" = 90% or more spent ($0 budget with spending = over); API range 366 days, service 24 months (coach); the context endpoint takes an optional `amount`; change percent to one decimal, omitted when the previous period had no spending.
 
 ---
 

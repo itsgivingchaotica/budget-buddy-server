@@ -2,6 +2,7 @@ ENV["RAILS_ENV"] ||= "test"
 require_relative "../config/environment"
 require "rails/test_help"
 require_relative "support/auth_test_helper"
+require_relative "support/spending_scenario"
 
 AuthTestHelper.install_verifier!
 AuthTestHelper.install_profile_fetcher!

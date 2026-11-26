@@ -9,8 +9,14 @@
 #                                         or nothing (plan approval, PL2)
 #   PUT /category_budgets/:category_slug  { amount } change one, from this
 #                                         month (Plan → change a budget, C8)
+#   GET /category_budgets/:category_slug/context[?amount=]
+#                                         the change-a-budget sheet's figures
+#                                         (AN1): weekly equivalent of the amount
+#                                         (default: this month's budget), average
+#                                         of the last 3 full months, spent this month
 class Api::V1::CategoryBudgetsController < ApplicationController
   include MoneyJson
+  include AnalyticsJson
 
   before_action :require_current_user!
 
@@ -45,6 +51,25 @@ class Api::V1::CategoryBudgetsController < ApplicationController
     render json: category_json(category, CategoryBudget.in_effect_on(current_user, month).find_by(category:))
   rescue ActiveRecord::RecordInvalid => e
     render json: { error: "invalid", errors: e.record.errors }, status: :unprocessable_entity
+  end
+
+  def context
+    category = Category.active_list.find_by(slug: params[:category_slug].to_s)
+    return render_invalid_reference("category") if category.nil?
+    unless Category.flexible.exists?(category.id)
+      return render json: { error: "not_flexible", field: "category" }, status: :unprocessable_entity
+    end
+
+    amount = if params[:amount].present?
+               parse_amount(params[:amount])
+             else
+               CategoryBudget.in_effect_on(current_user, UserClock.month_start(current_user)).find_by(category:)&.amount
+             end
+    if params[:amount].present? && (amount.nil? || amount.negative? || amount > CategoryBudget::MAX_AMOUNT)
+      return render json: { error: "invalid_parameter", field: "amount" }, status: :unprocessable_entity
+    end
+
+    render json: analytics_json(SpendingAnalytics.category_context(current_user, category, amount:))
   end
 
   private

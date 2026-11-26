@@ -7,7 +7,12 @@ Rails.application.routes.draw do
       end
       # DM-3 (category budgets)
       put "category_budgets", to: "category_budgets#replace_month"
-      resources :category_budgets, only: %i[index update], param: :category_slug
+      resources :category_budgets, only: %i[index update], param: :category_slug do
+        get :context, on: :member
+      end
+      # AN2 (spending analytics)
+      get "analytics/summary", to: "analytics#summary"
+      get "analytics/budget_vs_actual", to: "analytics#budget_vs_actual"
       # OB1 (bills)
       resources :obligations, only: %i[index show create update] do
         get :due, on: :collection
