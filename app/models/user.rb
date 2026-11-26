@@ -15,6 +15,8 @@ class User < ApplicationRecord
   has_many :category_corrections
   # M2 plan: DM-3 category budgets.
   has_many :category_budgets
+  # OB1: bills (archived, never deleted).
+  has_many :obligations
 
   # Users created from a Kinde identity (S2) take names and email from Kinde,
   # which may not provide them; legacy users still need all three.

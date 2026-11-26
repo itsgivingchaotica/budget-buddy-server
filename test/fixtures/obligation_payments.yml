@@ -1,0 +1,4 @@
+two_rent_jan:
+  obligation: two_rent
+  due_on: 2026-01-01
+  paid_on: 2026-01-01

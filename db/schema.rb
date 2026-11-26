@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_26_100000) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_26_110000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -189,6 +189,41 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_26_100000) do
     t.check_constraint "length(merchant_key::text) >= 1 AND length(merchant_key::text) <= 255", name: "merchant_rules_key_length_check"
   end
 
+  create_table "obligation_payments", force: :cascade do |t|
+    t.bigint "obligation_id", null: false
+    t.date "due_on", null: false
+    t.date "paid_on", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["obligation_id", "due_on"], name: "index_obligation_payments_on_obligation_id_and_due_on", unique: true
+  end
+
+  create_table "obligations", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "name", null: false
+    t.decimal "amount", precision: 12, scale: 2, null: false
+    t.bigint "category_id", null: false
+    t.bigint "account_id"
+    t.date "first_due_on", null: false
+    t.string "recurrence", default: "monthly", null: false
+    t.integer "interval", default: 1, null: false
+    t.integer "day_of_month"
+    t.date "ends_on"
+    t.string "source", default: "user", null: false
+    t.datetime "archived_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_obligations_on_account_id"
+    t.index ["category_id"], name: "index_obligations_on_category_id"
+    t.index ["user_id"], name: "index_obligations_on_user_id"
+    t.check_constraint "(recurrence::text = ANY (ARRAY['monthly'::character varying, 'yearly'::character varying]::text[])) AND day_of_month IS NOT NULL AND day_of_month >= 1 AND day_of_month <= 31 OR (recurrence::text <> ALL (ARRAY['monthly'::character varying, 'yearly'::character varying]::text[])) AND day_of_month IS NULL", name: "obligations_day_of_month_check"
+    t.check_constraint "\"interval\" >= 1", name: "obligations_interval_check"
+    t.check_constraint "amount > 0::numeric", name: "obligations_amount_check"
+    t.check_constraint "ends_on IS NULL OR ends_on >= first_due_on", name: "obligations_ends_on_check"
+    t.check_constraint "recurrence::text = ANY (ARRAY['none'::character varying, 'weekly'::character varying, 'biweekly'::character varying, 'monthly'::character varying, 'yearly'::character varying]::text[])", name: "obligations_recurrence_check"
+    t.check_constraint "source::text = ANY (ARRAY['interview'::character varying, 'user'::character varying, 'coach'::character varying]::text[])", name: "obligations_source_check"
+  end
+
   create_table "tags", force: :cascade do |t|
     t.string "name"
     t.datetime "created_at", null: false
@@ -287,6 +322,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_26_100000) do
   add_foreign_key "imports", "accounts"
   add_foreign_key "merchant_rules", "categories"
   add_foreign_key "merchant_rules", "users"
+  add_foreign_key "obligation_payments", "obligations", on_delete: :restrict
+  add_foreign_key "obligations", "accounts"
+  add_foreign_key "obligations", "categories"
+  add_foreign_key "obligations", "users"
   add_foreign_key "tags", "categories"
   add_foreign_key "transactions", "accounts"
   add_foreign_key "transactions", "categories"
