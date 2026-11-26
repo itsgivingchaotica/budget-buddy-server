@@ -14,7 +14,7 @@ module BbServer
     # Please, add to the `ignore` list any other `lib` subdirectories that do
     # not contain `.rb` files, or that should not be reloaded or eager loaded.
     # Common ones are `templates`, `generators`, or `middleware`, for example.
-    config.autoload_lib(ignore: %w(assets tasks))
+    config.autoload_lib(ignore: %w(assets tasks middleware))
 
     # Configuration for the application, engines, and railties goes here.
     #
@@ -28,5 +28,10 @@ module BbServer
     # Middleware like session, flash, cookies can be added back manually.
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = true
+
+    # No financial text in logs: malformed JSON never reaches Rails' parser,
+    # which would log the raw body (lib/middleware/json_body_guard.rb).
+    require_relative "../lib/middleware/json_body_guard"
+    config.middleware.use JsonBodyGuard
   end
 end
