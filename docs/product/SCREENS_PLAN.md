@@ -1,6 +1,6 @@
 # Screen spec — Plan tab (C8 plan tab screens)
 
-**Status:** APPROVED by the product owner (2026-11-25), including the whole-month budget-change rule in §6. Milestone 2.
+**Status:** APPROVED by the product owner (2026-11-25), including the whole-month budget-change rule in §6. **Amended 2026-11-26 (owner approved, D-028):** "No budget yet" group in §3. Milestone 2.
 **Visual source:** canvas page "Plan" (Plan · budgets, bills, goals, change a budget). Reference screenshots: `docs/product/screens/Plan-*.png`.
 **Depends on:** DM-3 (category budgets), OB1 (bills), G1/G2 (goals and goal maths), AN1/AN2 (spending analytics), PL2 (plan approval). Shared rules (brand, money format, accessibility, errors) as in `SCREENS_ACTIVITY.md`.
 
@@ -25,8 +25,11 @@ One place to see the approved plan and how this month is going against it: **bud
 | Footnote | "Rent, utilities and other fixed costs are in **Bills**. Tap a budget to change it." | — |
 | Month | Current month by default; when opened from Home's Month switch, same view. Previous months: ‹ › arrows beside the month name (read-only) | `month` param |
 
+| **"No budget yet" group** (added 2026-11-26) | Under the budgeted rows: each flexible category with spending this month but no budget, e.g. "Clothing · $64 spent", in a white card titled "No budget yet". Tapping one opens the change-a-budget sheet (§3.1) starting at $0. Hidden when empty | same (unbudgeted lines in budget vs actual) |
+
+- **Totals:** the summary card's "spent" includes budgeted rows, the "No budget yet" rows and uncategorized spending, so it matches the coach's spending figure for the month.
 - **Which budget amount a month uses:** the row in effect on that month's 1st (`effective_from` ≤ 1st, latest).
-- Uncategorized spending appears as a last row "Not yet categorized · $X" with a link to Review, so the totals add up.
+- Uncategorized spending (money going out only, per SPEC_LEFT_TO_SPEND §4.2) appears as a last row "Not yet categorized · $X" with a link to Review, so the totals add up.
 - All figures come from AN1; the client only formats (whole-dollar display per the shared helper; the summary keeps cents only if the API returns them).
 
 ### 3.1 Change a budget (sheet)
