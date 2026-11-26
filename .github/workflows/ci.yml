@@ -1,0 +1,52 @@
+# CI1 (GitHub Actions CI): run the Rails test suite on every push and pull
+# request. No secrets: tests use a local test signing key for Kinde tokens
+# and a fake Claude client (AnthropicClient refuses real calls in test).
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      RAILS_ENV: test
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/bb_server_test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          # Version from .ruby-version (3.3.0).
+          bundler-cache: true
+
+      - name: Prepare the test database
+        run: bin/rails db:test:prepare
+
+      - name: Run tests
+        run: bin/rails test
