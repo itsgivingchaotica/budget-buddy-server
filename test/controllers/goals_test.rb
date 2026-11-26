@@ -101,4 +101,30 @@ class GoalsTest < ActionDispatch::IntegrationTest
     end
     assert_response :not_found
   end
+
+  # G2: every figure on a card comes from the API, money as strings.
+  test "GET /goals carries the G2 progress: saving and debt, with the what-if step" do
+    users(:one).goals.create!(goal_type: "upcoming_payment", name: "Insurance", target_amount: "620",
+                              target_date: Date.new(2027, 1, 10), created_at: Time.utc(2026, 11, 25, 12))
+    users(:one).goals.create!(goal_type: "debt_payoff", name: "Card", starting_balance: "5000", apr: "22", monthly_payment: "200",
+                              created_at: Time.utc(2026, 11, 10, 12))
+    saving, debt = call(:get, api_v1_goals_url)["goals"].map { |g| g["progress"] }
+    assert_equal({ "kind" => "saving", "weeks_left" => 7, "needed_per_week" => "88.58", "still_needed_this_week" => "88.58",
+                   "on_track" => true, "percent" => 0, "remaining" => "620.00" },
+                 saving.slice("kind", "weeks_left", "needed_per_week", "still_needed_this_week", "on_track", "percent", "remaining"))
+    # 88.58 by Sun 11-29 is short of 155; 177.16 by Sun 12-06 crosses it
+    assert_equal({ "percent" => 25, "amount" => "155.00", "reached" => false, "reached_on" => nil, "projected_on" => "2026-12-06" },
+                 saving["milestones"].first)
+    assert_equal "91.67", debt["interest_this_month"]
+    assert_equal({ "never_pays_off" => false, "months" => 34, "payoff_month" => "2029-09", "total_interest" => "1749.90" }, debt["payoff"])
+    assert_equal ["50.00", "464.19", 8], debt["what_if"].values_at("extra", "interest_saved", "months_sooner")
+    assert debt["assumptions"].any?
+
+    what_if = call(:get, api_v1_goals_url(what_if_extra: "100"))["goals"].last["progress"]["what_if"]
+    assert_equal "100.00", what_if["extra"]
+    call(:get, api_v1_goals_url(what_if_extra: "-5"))
+    assert_equal "what_if_extra", response.parsed_body["field"]
+    call(:get, api_v1_goals_url(what_if_extra: "lots"))
+    assert_response :unprocessable_entity
+  end
 end

@@ -2,7 +2,7 @@
 
 One sentence per ID, so docs and messages can be read without cross-referencing.
 **House rule (2026-11-24):** whenever an ID appears in a doc or message, write its plain name next to it the first time, e.g. "DM-1 (new category list)".
-**Repo copy:** `docs/GLOSSARY.md` (Claude Code's location). Status marks: ✅ committed · 🟡 built, not committed.
+**Repo copy:** `bb-server/docs/GLOSSARY.md` (all docs live in the server repo since 2026-11-26). Status marks: ✅ committed · 🟡 built, not committed.
 **Last updated:** 2026-11-25 evening (C2 passed the phone test; spec links added).
 
 ---

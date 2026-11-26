@@ -1287,7 +1287,7 @@ So the phone was already signed out of Kinde locally, while the app kept its use
 - Tests: 6 new in `cors_and_logging_test.rb` (parameters incl. query string, SQL, exceptions incl. a real PostgreSQL error, malformed JSON, Claude tracing, plus the fixed token test and the filter list). Server suite **486 pass**. Mutation checks (6) all caught.
 - **Owner task:** `bin/rails log:clear` to remove what earlier logs held.
 
-### G1 (goals) — done (2026-11-26)
+### G1 (goals) — done, merged (2026-11-26)
 
 - OB1 and the log-filter fix merged to `main`; `feature/goals` rebased onto it. Branch `feature/goals` (server). Migration `20261126120000_create_goals.rb` (additive; rollback tested). Details in `ARCHITECTURE.md`.
 - **Spec deviations / choices (for the decision log):**
@@ -1299,3 +1299,25 @@ So the phone was already signed out of Kinde locally, while the app kept its use
   6. `plan_proposal_id` left for PL1 (as with DM-3 and OB1).
 - Tests: `goal_test.rb` (5: per-type fields, saved/remaining, debt balance by date and undo, contribution rules incl. the user's zone, database CHECKs + FK restrict), `goals_test.rb` (6: create each type with injected owner/source ignored, list order and status filter, set aside + undo, balance update + refusals, edit/archive, another user's contribution through my own goal → 404). Ownership matrix: 4 rows (show/update/contribute/undo another user's goal → 404), snapshot includes both tables, not-provisioned 403, lists empty. Server suite **496 pass**. Mutation checks (11) all caught.
 - **PO approval (2026-11-26):** G1 approved, all five points. The log-filter fix found while building it goes in its own PR, merged first.
+
+### G2 (goal and debt maths) — done, uncommitted (2026-11-26)
+
+- G1 merged to `main`. Branch `feature/goal-maths` (server). No migration. Details in `ARCHITECTURE.md`.
+- **Definitions I chose (the specs name the figures, not the formulas; for the decision log):**
+  1. **Weeks are the user's weeks** (`week_starts_on`). `weeks_left` counts this week and the target date's week. **`needed_per_week`** = what was left at the start of this week ÷ weeks left, **rounded up** to the cent, so it doesn't change mid-week; money set aside this week lowers `still_needed_this_week` instead (what Home's "$25 more toward … this week" needs, spec §8.2).
+  2. **On track (saving):** saved ≥ an even plan from the goal's first week (starting amount → target by the target week) as of the start of this week. A goal begun this week is on track; past the date it's on track only if reached. The goal's first week comes from `created_at` in the user's zone (no `started_on` column).
+  3. **On track (debt):** the balance is at or below where one scheduled payment per month since the goal's first month would have brought it (first payment the month after). A user who doesn't update the balance shows "Behind" after a month; that's the prompt to update it.
+  4. **Debt assumptions:** fixed APR, monthly interest rounded half up to the cent, no new charges, same payment (last one smaller), **first payment next month**; payoff shown as a month (YYYY-MM). "Never pays off" when the payment doesn't cover the first month's interest or would take over 50 years.
+  5. **Milestones:** percent of the target (saving) or of the starting balance paid (debt). Projections: saving at `needed_per_week` (never after the target date); debt from the schedule (end of that month); **undated goals get no projected dates** (they have no weekly pace in the MVP).
+  6. Percents are whole numbers, rounded down.
+- **Bug found by the reference test:** interest computed through a stored rate (APR ÷ 12) rounded exact half cents down ($1,380 at 22.9%: $26.335 → $26.33 instead of $26.34). Fixed by computing balance × APR ÷ 1200 in one step; a test covers it, and another separates half-up from half-to-even.
+- Tests: `debt_calculator_test.rb` (8, against an independent Python Decimal schedule and the closed-form payoff formula: $5,000 at 22%/$200 → 34 payments, $1,749.90 interest; +$50 → 26 payments, $464.19 saved, 8 months sooner; the card example $1,840 at 22.9%/$120; 0% and 12%; half-cent rounding; never pays off incl. the 50-year cap; zero balance and bad input), `goal_calculator_test.rb` (11: on track with fixed weekly need and milestones reached/projected, behind, begun this week, mid-week target date, Sunday week start, past the date, reached, undated, debt payoff and what-if, debt on track from balance updates, never pays off), `goals_test.rb` +1 (response shape, money as strings, `what_if_extra`). Server suite **521 pass**. Mutation checks (11) all caught, after adding three checks (half-to-even, first-month stop, mid-week target).
+
+- **PO approval (2026-11-26):** G2 approved, including all six definitions.
+
+### D-027 (deterministic first, AI as assistant) — approved changes (PO, 2026-11-26)
+
+1. **"By coach" marker and filter** for rows Claude categorized without review: built as a **small follow-up PR to C2b** (Activity), after step 3, because it belongs on the Activity screens rather than the Plan tab.
+2. **Understanding check per PR:** every PR report lists the 2–3 core-logic files, a plain-language walkthrough and 3 questions the owner should be able to answer. Started with the G2 PR.
+3. **Figures audit rake task** (Home, Plan and the coach's tools agree for the demo user): built in step 9 (Q1).
+- `DESIGN_DECISIONS.md` (D-027) and `GLOSSARY.md` updated by the owner; committed with G2. `CLAUDE.md` (top level, not in git) has the D-027 section and refreshed status lines.

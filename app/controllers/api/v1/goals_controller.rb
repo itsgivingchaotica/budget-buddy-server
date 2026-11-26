@@ -1,7 +1,9 @@
 # G1 (goals): the caller's goals and their contributions. Every lookup goes
 # through current_user.goals (another user's goal or contribution → 404).
-# Saved amounts and debt balances are computed (Goal#saved / #balance); G2
-# adds the maths (weekly need, milestones, payoff) to these responses.
+# Saved amounts and debt balances are computed (Goal#saved / #balance); each
+# goal also carries `progress` from GoalCalculator (G2: weekly need, on
+# track, milestones; debt interest, payoff and a what-if), so the app does
+# no maths. `what_if_extra` (default 50) is the debt what-if step.
 #
 #   GET    /goals?status=active|completed|archived|all   (default active), ordered:
 #                                         dated saving goals by date, undated, then debt
@@ -18,7 +20,10 @@ class Api::V1::GoalsController < ApplicationController
 
   FIELDS = %i[name target_amount target_date starting_balance apr monthly_payment].freeze
 
+  MAX_WHAT_IF = BigDecimal("1000000")
+
   before_action :require_current_user!
+  before_action :set_what_if
   before_action :set_goal, only: %i[show update contribute uncontribute]
 
   def index
@@ -71,6 +76,13 @@ class Api::V1::GoalsController < ApplicationController
 
   private
 
+  def set_what_if
+    @what_if = params[:what_if_extra].present? ? BigDecimal(params[:what_if_extra].to_s) : GoalCalculator::DEFAULT_WHAT_IF
+    raise ArgumentError unless @what_if.positive? && @what_if <= MAX_WHAT_IF
+  rescue ArgumentError, TypeError
+    render json: { error: "invalid_parameter", field: "what_if_extra" }, status: :unprocessable_entity
+  end
+
   def set_goal
     @goal = current_user.goals.find(params[:id])
   end
@@ -102,7 +114,18 @@ class Api::V1::GoalsController < ApplicationController
     { id: g.id, goal_type: g.goal_type, name: g.name, status: g.status, source: g.source,
       target_amount: money(g.target_amount), target_date: g.target_date, starting_balance: money(g.starting_balance),
       apr: money(g.apr), monthly_payment: money(g.monthly_payment),
-      saved: money(g.saved), balance: money(g.balance), remaining: money(g.remaining) }
+      saved: money(g.saved), balance: money(g.balance), remaining: money(g.remaining),
+      progress: progress_json(GoalCalculator.for(g, what_if_extra: @what_if).call) }
+  end
+
+  # Money as strings; dates, counts, percents and flags as they are.
+  def progress_json(value)
+    case value
+    when BigDecimal then money(value)
+    when Hash then value.transform_values { |v| progress_json(v) }
+    when Array then value.map { |v| progress_json(v) }
+    else value
+    end
   end
 
   def contribution_json(c)
