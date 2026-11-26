@@ -16,7 +16,10 @@ concurrency:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # Pinned: the newest runner image (ubuntu-26.04) only has the latest Ruby
+    # 3.3 patch (3.3.14), and the Gemfile requires exactly 3.3.0 (as on the
+    # Mac). Move to ubuntu-latest when the project upgrades Ruby.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
 
     services:
