@@ -1273,7 +1273,7 @@ So the phone was already signed out of Kinde locally, while the app kept its use
 
 - **PO approval (2026-11-26):** OB1 approved, including all six points above. **For PL1 (plan drafting):** the plan's committed-bills total must use `Bills.monthly_total` (the same monthly equivalents), so the drafted plan and the Plan tab always agree.
 
-### Log filtering — done, uncommitted (2026-11-26)
+### Log filtering — done, merged (2026-11-26)
 
 - Found while building G1; own PR from `main` (branch `fix/log-filtering`), merged before G1 (PO). Ground rule: no financial text in logs. Details in `ARCHITECTURE.md`.
 - **What leaked, and the fix:**
@@ -1287,3 +1287,15 @@ So the phone was already signed out of Kinde locally, while the app kept its use
 - Tests: 6 new in `cors_and_logging_test.rb` (parameters incl. query string, SQL, exceptions incl. a real PostgreSQL error, malformed JSON, Claude tracing, plus the fixed token test and the filter list). Server suite **486 pass**. Mutation checks (6) all caught.
 - **Owner task:** `bin/rails log:clear` to remove what earlier logs held.
 
+### G1 (goals) — done (2026-11-26)
+
+- OB1 and the log-filter fix merged to `main`; `feature/goals` rebased onto it. Branch `feature/goals` (server). Migration `20261126120000_create_goals.rb` (additive; rollback tested). Details in `ARCHITECTURE.md`.
+- **Spec deviations / choices (for the decision log):**
+  1. **No `current_balance`, no `linked_transfer` kind, no `transaction_id`** (step-1 decisions). So the plan's G1 test "deleting a transaction linked from a goal contribution → 422" doesn't apply yet; it comes with linking, if that's built.
+  2. **`source` column added** (interview/user/coach, as on bills), for PL2. The API always sets `user`.
+  3. **Debt goals have no target amount or date** (the target is a zero balance; G2 works out the payoff date). Saving goals refuse APR and monthly payment.
+  4. **Deleting a goal = `status: archived`** via `PATCH` (no `DELETE /goals/:id`). Archived goals take no new contributions; undo still works.
+  5. Contribution responses include the updated goal, so the card refreshes without another request.
+  6. `plan_proposal_id` left for PL1 (as with DM-3 and OB1).
+- Tests: `goal_test.rb` (5: per-type fields, saved/remaining, debt balance by date and undo, contribution rules incl. the user's zone, database CHECKs + FK restrict), `goals_test.rb` (6: create each type with injected owner/source ignored, list order and status filter, set aside + undo, balance update + refusals, edit/archive, another user's contribution through my own goal → 404). Ownership matrix: 4 rows (show/update/contribute/undo another user's goal → 404), snapshot includes both tables, not-provisioned 403, lists empty. Server suite **496 pass**. Mutation checks (11) all caught.
+- **PO approval (2026-11-26):** G1 approved, all five points. The log-filter fix found while building it goes in its own PR, merged first.

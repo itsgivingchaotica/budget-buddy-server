@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_26_110000) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_26_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -151,6 +151,41 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_26_110000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["user_id"], name: "index_financial_profiles_on_user_id", unique: true
+  end
+
+  create_table "goal_contributions", force: :cascade do |t|
+    t.bigint "goal_id", null: false
+    t.string "kind", null: false
+    t.decimal "amount", precision: 12, scale: 2
+    t.decimal "balance_after", precision: 12, scale: 2
+    t.date "contributed_on", null: false
+    t.string "note"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["goal_id"], name: "index_goal_contributions_on_goal_id"
+    t.check_constraint "kind::text = 'set_aside'::text AND amount IS NOT NULL AND amount > 0::numeric AND balance_after IS NULL OR kind::text = 'balance_update'::text AND balance_after IS NOT NULL AND balance_after >= 0::numeric AND amount IS NULL", name: "goal_contributions_kind_check"
+    t.check_constraint "note IS NULL OR char_length(note::text) <= 200", name: "goal_contributions_note_check"
+  end
+
+  create_table "goals", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "goal_type", null: false
+    t.string "name", null: false
+    t.decimal "target_amount", precision: 12, scale: 2
+    t.date "target_date"
+    t.decimal "starting_balance", precision: 12, scale: 2, default: "0.0", null: false
+    t.decimal "apr", precision: 5, scale: 2
+    t.decimal "monthly_payment", precision: 12, scale: 2
+    t.string "status", default: "active", null: false
+    t.string "source", default: "user", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_goals_on_user_id"
+    t.check_constraint "(goal_type::text = ANY (ARRAY['upcoming_payment'::character varying, 'purchase'::character varying]::text[])) AND target_amount IS NOT NULL AND target_amount > 0::numeric AND apr IS NULL AND monthly_payment IS NULL AND (goal_type::text = 'purchase'::text OR target_date IS NOT NULL) OR goal_type::text = 'debt_payoff'::text AND target_amount IS NULL AND target_date IS NULL AND starting_balance > 0::numeric AND apr IS NOT NULL AND apr >= 0::numeric AND apr <= 100::numeric AND monthly_payment IS NOT NULL AND monthly_payment > 0::numeric", name: "goals_type_fields_check"
+    t.check_constraint "goal_type::text = ANY (ARRAY['upcoming_payment'::character varying, 'purchase'::character varying, 'debt_payoff'::character varying]::text[])", name: "goals_type_check"
+    t.check_constraint "source::text = ANY (ARRAY['interview'::character varying, 'user'::character varying, 'coach'::character varying]::text[])", name: "goals_source_check"
+    t.check_constraint "starting_balance >= 0::numeric", name: "goals_starting_balance_check"
+    t.check_constraint "status::text = ANY (ARRAY['active'::character varying, 'completed'::character varying, 'archived'::character varying]::text[])", name: "goals_status_check"
   end
 
   create_table "imports", force: :cascade do |t|
@@ -319,6 +354,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_26_110000) do
   add_foreign_key "entries_tags", "budgets"
   add_foreign_key "entries_tags", "users"
   add_foreign_key "financial_profiles", "users"
+  add_foreign_key "goal_contributions", "goals", on_delete: :restrict
+  add_foreign_key "goals", "users"
   add_foreign_key "imports", "accounts"
   add_foreign_key "merchant_rules", "categories"
   add_foreign_key "merchant_rules", "users"

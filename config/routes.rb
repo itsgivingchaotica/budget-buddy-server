@@ -17,6 +17,13 @@ Rails.application.routes.draw do
           delete "payments/:due_on", action: :unpay, as: :payment
         end
       end
+      # G1 (goals)
+      resources :goals, only: %i[index show create update] do
+        member do
+          post "contributions", action: :contribute
+          delete "contributions/:contribution_id", action: :uncontribute, as: :contribution
+        end
+      end
       # C2b: undo a category correction
       resources :category_corrections, only: [] do
         post :undo, on: :member

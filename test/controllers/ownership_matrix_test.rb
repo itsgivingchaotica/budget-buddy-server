@@ -74,6 +74,13 @@ class OwnershipMatrixTest < ActionDispatch::IntegrationTest
     "obligations#create unknown category" =>
                                     [:post,   -> { api_v1_obligations_url }, { name: "X", amount: "1", category: "no-such-category", first_due_on: "2026-12-01" }, :unprocessable_entity],
 
+    # --- goals (G1) ---------------------------------------------------------------------
+    "goals#show other"           => [:get,    -> { api_v1_goal_url(goals(:two_trip)) }, nil, :not_found],
+    "goals#update other"         => [:patch,  -> { api_v1_goal_url(goals(:two_trip)) }, { name: "X" }, :not_found],
+    "goals#contribute to other"  => [:post,   -> { contributions_api_v1_goal_url(goals(:two_trip)) }, { amount: "1" }, :not_found],
+    "goals#undo other's contribution" =>
+                                    [:delete, -> { contribution_api_v1_goal_url(goals(:two_trip), contribution_id: goal_contributions(:two_trip_first).id) }, nil, :not_found],
+
     # --- category corrections (C2b) ---------------------------------------------------
     "category_corrections#undo other" =>
                                     [:post,   -> { undo_api_v1_category_correction_url(category_corrections(:two_fix)) }, nil, :not_found],
@@ -94,7 +101,7 @@ class OwnershipMatrixTest < ActionDispatch::IntegrationTest
 
   # A fingerprint of everything the rows could touch.
   def snapshot
-    [User, Budget, Entry, Tag, Category, Account, Import, Transaction, MerchantRule, TransferLink, CategoryCorrection, CategoryBudget, Obligation, ObligationPayment].to_h do |model|
+    [User, Budget, Entry, Tag, Category, Account, Import, Transaction, MerchantRule, TransferLink, CategoryCorrection, CategoryBudget, Obligation, ObligationPayment, Goal, GoalContribution].to_h do |model|
       [model.name, model.order(:id).map { |r| r.attributes.except("updated_at") }]
     end.merge("EntriesTags" => Entry.order(:id).map { |e| e.tag_ids.sort })
   end
@@ -140,6 +147,9 @@ class OwnershipMatrixTest < ActionDispatch::IntegrationTest
     get due_api_v1_obligations_url(from: "2026-01-01", to: "2026-12-31"), headers: auth_headers, as: :json
     assert_equal [], response.parsed_body["items"]
 
+    get api_v1_goals_url(status: "all"), headers: auth_headers, as: :json
+    assert_equal [], response.parsed_body["goals"]
+
     get review_groups_api_v1_transactions_url, headers: auth_headers, as: :json
     assert_not_includes response.parsed_body["groups"].flat_map { |g| g["accounts"].map { |a| a["id"] } }, accounts(:two_checking).id
   end
@@ -169,7 +179,7 @@ class OwnershipMatrixTest < ActionDispatch::IntegrationTest
   test "a valid token without a provisioned user gets 403 on every scoped resource" do
     headers = auth_headers("sub" => "kp_not_provisioned")
     [api_v1_budgets_url, api_v1_entries_url, api_v1_tags_url, api_v1_users_url, api_v1_accounts_url,
-     api_v1_transactions_url, api_v1_transfer_links_url, api_v1_category_budgets_url, api_v1_obligations_url].each do |url|
+     api_v1_transactions_url, api_v1_transfer_links_url, api_v1_category_budgets_url, api_v1_obligations_url, api_v1_goals_url].each do |url|
       get url, headers: headers, as: :json
       assert_response :forbidden, url
     end
