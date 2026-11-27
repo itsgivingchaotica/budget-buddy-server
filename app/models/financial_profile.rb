@@ -9,7 +9,9 @@ class FinancialProfile < ApplicationRecord
   SUNDAY = 0
 
   PAY_FREQUENCIES = %w[weekly biweekly semimonthly monthly irregular].freeze
-  CHANGE_APPETITES = %w[small medium large].freeze
+  # Onboarding question 5 (SPEC_ONBOARDING_PLAN §4.2; owner decision 2026-11-26):
+  # keep things as they are, small trims, push me a bit.
+  CHANGE_APPETITES = %w[keep trim push].freeze
 
   belongs_to :user
 

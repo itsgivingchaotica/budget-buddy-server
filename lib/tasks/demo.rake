@@ -6,6 +6,7 @@
 #                                  delete the demo user's (or that user's) imported data (development only)
 #   bin/rails demo:seed USER_EMAIL=you@example.com
 #   bin/rails "demo:home_state[normal]" [USER_EMAIL=…]   no_plan | normal | over, for Home screenshots
+#   bin/rails "demo:onboarding_state[interview]" [USER_EMAIL=…]   accounts | interview | merchants | plan, no answers
 #   bin/rails demo:sample_plan [USER_EMAIL=…]   a stand-in plan (budgets, bills, a goal) for checking Home/Plan
 #                                  ...or into an existing (signed-in) user, so the app shows them
 #
@@ -58,6 +59,14 @@ namespace :demo do
     email = ENV["USER_EMAIL"].presence || Demo::Reset::DEMO_EMAIL
     puts "Home state for #{email == Demo::Reset::DEMO_EMAIL ? 'the demo user' : 'USER_EMAIL'}: #{Demo::HomeState.call(state: args[:state].to_s, email:)}"
   rescue Demo::HomeState::Refused => e
+    abort e.message
+  end
+
+  desc "Put the demo user's (or USER_EMAIL's) onboarding at a step with no answers: accounts, interview, merchants or plan (development only)"
+  task :onboarding_state, [:step] => :environment do |_t, args|
+    email = ENV["USER_EMAIL"].presence || Demo::Reset::DEMO_EMAIL
+    puts "Onboarding: #{Demo::OnboardingState.call(step: args[:step].to_s, email:)}"
+  rescue Demo::OnboardingState::Refused => e
     abort e.message
   end
 
