@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Creates the starting milestones. Skips any that already exist.
+# Usage: bin/setup-milestones [owner/repo] ["M1 title" "M2 title" ...]
+# With no titles after the repo, creates M0, M1 and M2 with generic names;
+# rename them on GitHub once MVP_SCOPE.md is approved.
+set -euo pipefail
+
+repo="${1:-$(gh repo view --json nameWithOwner -q .nameWithOwner)}"
+shift || true
+
+titles=("M0 Discovery & design")
+if [ "$#" -gt 0 ]; then
+  titles+=("$@")
+else
+  titles+=("M1 First milestone" "M2 Second milestone")
+fi
+
+existing="$(gh api "repos/${repo}/milestones?state=all&per_page=100" --jq '.[].title')"
+
+for t in "${titles[@]}"; do
+  if grep -Fxq "$t" <<<"$existing"; then
+    echo "  = ${t} (exists)"
+  else
+    gh api "repos/${repo}/milestones" -f title="$t" >/dev/null
+    echo "  ✓ ${t}"
+  fi
+done

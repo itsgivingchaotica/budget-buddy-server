@@ -1,5 +1,7 @@
 # Budget Buddy — MVP Progress Log
 
+**Status:** Living log (maintained by Claude Code; owner approvals recorded per entry)
+
 Plan: [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) (revision 2). Task IDs below refer to that plan.
 
 ---
@@ -1381,3 +1383,11 @@ So the phone was already signed out of Kinde locally, while the app kept its use
 - Tests (client): `__tests__/plan.test.tsx` (16: labels incl. ordinals, schedules, chips, the 31st in a 30-day month and February; budget rows left/over; stepper bounds; bill and contribution inputs; goal card lines saving/debt/never pays off/undated; screen: Budgets summary + over row + No budget yet + uncategorized, change a budget (context for the amount shown, saves the month), No budget yet at $0, previous month read only, Bills chips + Mark paid, Add a bill on the 31st, Goals set aside + Undo, no plan). Client suite **92/92**, TypeScript **48**. Mutation checks (7) all caught.
 - Understanding check answered (PO, 2026-11-26); walkthrough given (the 31st → Nov 30 with day 31 kept; "$6 over" is display rounding only; a set-aside is saved at once and Undo deletes it within 5 s; the weekly amount is fixed for the week). Committed with the PO's OK.
 
+
+### Adopt project-build-workflow (chore) — done, uncommitted (2026-11-27)
+
+- Branch `chore/adopt-workflow` from `main` in both repos (one PR each). Source: `~/Developer/project-workflow-starter` (public: `itsgivingchaotica/project-workflow-starter`).
+- **Owner choices (2026-11-27):** A level **L0, designed for L1** → **D-029 (ambition level)** (D-001 is taken); B create M0 and close it at once (discovery happened before GitHub tracking); C PR template = the starter's plus Budget Buddy's understanding-check questions and screenshots section; D keep the existing board "Budget Buddy" (#12) and its columns (no `bin/setup-board`); E convert the existing task issues instead of creating new ones; F ON1/C5 committed first (`b6fb95d`, `1373938`); G the unpushed `chore/github-templates` branches deleted.
+- **Server:** `.claude/skills/project-build-workflow/SKILL.md`, `CLAUDE.md` (Builder role, where things are, ground rules, Budget Buddy rules, Phase 3 loop), `.github/ISSUE_TEMPLATE/` (idea, decision, question, spec, screen, task, bug; `config.yml` → the starter's GETTING_STARTED.md), `.github/PULL_REQUEST_TEMPLATE.md`, `bin/setup-labels`, `bin/setup-milestones`, `bin/check-docs` (not in CI). Docs: D-029 in `DESIGN_DECISIONS.md`; ID families I-nn, M0, M3, L0–L4 in `GLOSSARY.md`; status lines added to `GLOSSARY.md`, `PROGRESS.md` and `product/README_DRAFT.md`, so `bin/check-docs` passes (it failed on those three). Existing docs, IDs, handoffs (`HANDOFF_CLAUDE_CODE_NN.md`) and `ci.yml` unchanged.
+- **Client:** `CLAUDE.md` (points to the server's skill, docs and ground rules; npm only, TypeScript baseline, tests out of `app/`, no maths in screens, phone checks and screenshots), the same `.github` templates.
+- **GitHub:** workflow labels in both repos (`bin/setup-labels`); milestones renamed "M2 Plan, goals, Home and coach" and "M3 v1", "M0 Discovery & design" added and closed; the remaining handoff #06 task issues labelled `task` + area with a Traceability block; pinned "Project status" issue in bb-server.

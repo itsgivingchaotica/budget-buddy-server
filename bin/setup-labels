@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# Creates (or updates) the workflow's labels in a GitHub repo.
+# Usage: bin/setup-labels [owner/repo]   (defaults to the current repo)
+# Needs: gh, signed in with access to the repo. Safe to re-run (--force updates).
+set -euo pipefail
+
+repo="${1:-$(gh repo view --json nameWithOwner -q .nameWithOwner)}"
+echo "Labels for ${repo}"
+
+label() { # name color description
+  gh label create "$1" --repo "$repo" --color "$2" --description "$3" --force >/dev/null
+  echo "  ✓ $1"
+}
+
+# Type
+label "idea"       "c5def5" "A raw idea (I-nn)"
+label "decision"   "5319e7" "A product or architecture decision (D-0nn)"
+label "question"   "d876e3" "An open question (Q-nn / PO-nn)"
+label "spec"       "0052cc" "A feature spec under review"
+label "screen"     "1d76db" "A screen area with its mockup"
+label "feature"    "0e8a16" "An MVP feature (P-n), parent of tasks"
+label "task"       "006b75" "One piece of build work = one PR"
+label "bug"        "d73a4a" "A known issue (K-n)"
+label "tech-debt"  "b60205" "Accepted technical debt (TD-n)"
+label "docs"       "0075ca" "Documentation only"
+
+# Status
+label "status:inbox"      "ededed" "Not looked at yet"
+label "status:shaping"    "fbca04" "Being worked out"
+label "status:proposed"   "f9d0c4" "Waiting for the owner's decision"
+label "status:approved"   "0e8a16" "Approved by the owner"
+label "status:parked"     "cfd3d7" "Kept, not planned"
+label "status:dropped"    "000000" "Dropped (reason in a comment)"
+label "status:superseded" "6a737d" "Replaced by a later decision"
+
+# Idea triage
+label "idea:core"  "2ea44f" "Idea is in the MVP"
+label "idea:later" "a2eeef" "Idea is after the MVP"
+
+# Area
+label "area:product" "fef2c0" "Product and scope"
+label "area:design"  "f9c2ff" "Brand and screens"
+label "area:backend" "bfdadc" "Server, data model, API"
+label "area:client"  "c2e0c6" "App / web client"
+label "area:infra"   "e4e669" "Hosting, CI, environments"
+label "area:ai"      "ffd8b5" "AI features and evals"
+
+# Ambition level
+label "level:L0" "f6f8fa" "Applies from L0 (portfolio)"
+label "level:L1" "e1e4e8" "Applies from L1 (private beta)"
+label "level:L2" "d1d5da" "Applies from L2 (public launch)"
+label "level:L3" "959da5" "Applies from L3 (growth)"
+label "level:L4" "586069" "Applies from L4 (worldwide)"
+
+echo "Done."

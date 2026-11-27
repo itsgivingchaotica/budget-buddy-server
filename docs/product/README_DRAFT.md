@@ -4,6 +4,9 @@ Claude Code: replace every TODO with as-built facts at the end of Milestone 2, k
 and remove this comment. Screenshots go in docs/product/screens/ (already there) or docs/readme/.
 -->
 
+**Status:** Draft (Claude Project, 2026-11-25); to be filled with as-built facts at the end of M2 (issue #29)
+
+
 # Budget Buddy 🐿️
 
 **A personal budgeting app that turns the bank exports you already have into a realistic plan, with an AI coach that helps you keep it, one week at a time.**
