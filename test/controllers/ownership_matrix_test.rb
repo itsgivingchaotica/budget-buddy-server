@@ -186,7 +186,8 @@ class OwnershipMatrixTest < ActionDispatch::IntegrationTest
     headers = auth_headers("sub" => "kp_not_provisioned")
     [api_v1_budgets_url, api_v1_entries_url, api_v1_tags_url, api_v1_users_url, api_v1_accounts_url,
      api_v1_transactions_url, api_v1_transfer_links_url, api_v1_category_budgets_url, api_v1_obligations_url, api_v1_goals_url,
-     api_v1_analytics_budget_vs_actual_url, context_api_v1_category_budget_url("groceries"), api_v1_outlook_week_url].each do |url|
+     api_v1_analytics_budget_vs_actual_url, context_api_v1_category_budget_url("groceries"), api_v1_outlook_week_url,
+     api_v1_onboarding_url].each do |url|
       get url, headers: headers, as: :json
       assert_response :forbidden, url
     end
