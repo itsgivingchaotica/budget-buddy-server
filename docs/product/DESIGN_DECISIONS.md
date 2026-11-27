@@ -215,6 +215,23 @@ Following advice from an experienced AI engineer: build scripts and deterministi
 - **Unbudgeted spending:** budget vs actual lists flexible categories with spending but no budget; the Plan tab shows them in a "No budget yet" group where tapping one sets a budget (`SCREENS_PLAN.md` §3).
 - **Other AN1 choices accepted:** "near" = 90% or more spent ($0 budget with spending = over); API range 366 days, service 24 months (coach); the context endpoint takes an optional `amount`; change percent to one decimal, omitted when the previous period had no spending.
 
+
+---
+
+## D-029 — Ambition level (L0, designed for L1)
+
+**Status:** Approved (owner, 2026-11-27). Adopted with the project-build-workflow (its "D-001 = ambition level"; D-001 is taken here, so this is the next free number).
+
+**Level: L0 Portfolio / learning.** The owner and reviewers use it; **synthetic demo data only** (DB0, the `demo:*` tasks, "synthetic data only" in every eval). One host, hosted auth (Kinde), managed Postgres on a free or hobby tier. Must-haves at L0: clean repos, tests, CI, demo data and a demo script, as-built architecture, evals for AI features, a visible GitHub trail.
+
+**Designed for L1 (private beta, real bank CSVs from fewer than 100 invited people).** The hard-to-reverse choices already fit L1: user-owned records with ownership checks on every query, money as `decimal(12,2)`, dates from the user's own time zone (`UserClock`), Kinde sign-in, a daily AI cost cap, no financial text in logs. Moving to L1 adds tasks rather than rewrites: error tracking, an uptime check, backups with a restore test, a staging database, a privacy note, data export and delete, secrets management.
+
+| Option | Who and what data | What it would still need | Chosen |
+|---|---|---|---|
+| **L0 Portfolio / learning** | Owner + reviewers; synthetic data | README with as-built facts and a demo script (both in M2) | **Yes** |
+| L1 Private beta | Up to ~100 invited; real bank CSVs | Error tracking, uptime, backups + restore test, staging DB, privacy note, data export/delete, secrets management | Next level up (design target) |
+| L2 Public launch | Anyone, app stores | L1 + privacy policy and terms, store listings, staging + prod, point-in-time recovery, support, incident checklist, accessibility pass | No |
+
 ---
 
 ## Open questions register
