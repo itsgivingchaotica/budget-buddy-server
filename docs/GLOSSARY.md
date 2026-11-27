@@ -1,5 +1,7 @@
 # Budget Buddy — Glossary of IDs and terms
 
+**Status:** Living document (maintained by the Planner and Claude Code) · **Last updated:** 2026-11-27 (project-build-workflow ID families added)
+
 One sentence per ID, so docs and messages can be read without cross-referencing.
 **House rule (2026-11-24):** whenever an ID appears in a doc or message, write its plain name next to it the first time, e.g. "DM-1 (new category list)".
 **Repo copy:** `bb-server/docs/GLOSSARY.md` (all docs live in the server repo since 2026-11-26). Status marks: ✅ committed · 🟡 built, not committed.
@@ -11,12 +13,16 @@ One sentence per ID, so docs and messages can be read without cross-referencing.
 
 | Prefix | Meaning | Where they live |
 |---|---|---|
-| **D-0nn** | A product or architecture **decision** (e.g. D-021 = Home outlook spec) | `DESIGN_DECISIONS.md` |
+| **I-nn** | A raw **idea** from intake (project-build-workflow; new ideas from 2026-11-27 on) | `product/IDEA_CARD.md` · `idea` issue |
+| **D-0nn** | A product or architecture **decision** (e.g. D-021 = Home outlook spec; D-029 = ambition level) | `DESIGN_DECISIONS.md` |
 | **C-1** | A hard **constraint** (CSV import only, no live bank link) | `DESIGN_DECISIONS.md` |
 | **Q-nn** | An **open question** in the Claude Project register | `DESIGN_DECISIONS.md` |
 | **PO-nn** | A **question for the product owner** raised by Claude Code (e.g. PO-33 = build order) | `docs/PROGRESS.md` |
 | **P1–P10** | The 10 **MVP features** in priority order | `MVP_SCOPE.md` |
+| **M0** | **Discovery and design**, the stage before building (done before GitHub tracking; its GitHub milestone is closed) | GitHub milestone |
 | **M1 / M2** | **Milestone 1** (Days 1–3: secure foundation, import, categorization) and **Milestone 2** (Days 4–7: plan, goals, Home, coach) | `MVP_SCOPE.md` |
+| **M3** | **v1**, everything deferred from the MVP (GitHub milestone "M3 v1") | `IMPLEMENTATION_PLAN.md` §11 |
+| **L0–L4** | **Ambition level**: L0 portfolio/learning, L1 private beta, L2 public launch, L3 growth, L4 worldwide. Budget Buddy is **L0, designed for L1** (D-029) | `DESIGN_DECISIONS.md` (D-029) · `level:Ln` labels |
 | **SR-1** | **Security requirement 1:** never link an existing account to a Kinde login on an unverified email | Implementation plan |
 | **TD1–TD5** | Known **technical debt** accepted for the MVP | Implementation plan |
 | **K1–K14** | **Known issues** found in the Copilot-era code | `docs/PROGRESS.md` |

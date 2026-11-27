@@ -1,5 +1,7 @@
 # Budget Buddy — MVP Progress Log
 
+**Status:** Living log (maintained by Claude Code; owner approvals recorded per entry)
+
 Plan: [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) (revision 2). Task IDs below refer to that plan.
 
 ---
@@ -1381,8 +1383,6 @@ So the phone was already signed out of Kinde locally, while the app kept its use
 - Tests (client): `__tests__/plan.test.tsx` (16: labels incl. ordinals, schedules, chips, the 31st in a 30-day month and February; budget rows left/over; stepper bounds; bill and contribution inputs; goal card lines saving/debt/never pays off/undated; screen: Budgets summary + over row + No budget yet + uncategorized, change a budget (context for the amount shown, saves the month), No budget yet at $0, previous month read only, Bills chips + Mark paid, Add a bill on the 31st, Goals set aside + Undo, no plan). Client suite **92/92**, TypeScript **48**. Mutation checks (7) all caught.
 - Understanding check answered (PO, 2026-11-26); walkthrough given (the 31st → Nov 30 with day 31 kept; "$6 over" is display rounding only; a set-aside is saved at once and Undo deletes it within 5 s; the weekly amount is fixed for the week). Committed with the PO's OK.
 
-### GitHub tracking set up (2026-11-26)
-
 - Labels (feature, bug, ai, security, tech-debt, docs, eval, ux; GitHub defaults kept), milestones "M2 — Plan, goals, Home, coach" and "v1" in both repos; issues for every remaining M2 step and the v1 list (server #22–#31, client #19–#28); the user-level Project "Budget Buddy" (Backlog / Ready / In progress / In review / Done) with the merged M2 PRs in Done; v0.1.0 releases at the end of M1; PR and issue templates (branch `chore/github-templates`). PR routine in `CLAUDE.md`.
 
 ### ON1 (onboarding interview) + C5 (onboarding screens) — done, uncommitted (2026-11-26)
@@ -1401,3 +1401,10 @@ So the phone was already signed out of Kinde locally, while the app kept its use
 - Tests: server `facts_test.rb` (9: every 2 weeks, weekly, twice a month, drifting half-month → irregular, monthly + median, irregular / small deposits / other accounts, side income incl. transfers and the $50 floor, likely bills ±10% / ±3 days / 2 of 3 months / fixed only, other users), `onboarding_test.rb` (6: questions templated and prefilled, no side income → no question 2, partial saves + typed fields + resume, 422 per question with nothing saved, limits and shapes, other users), `onboarding_state_test.rb` (2). Server suite **587 pass**; mutation checks (12) all caught after adding the drifting-days case. Client `__tests__/onboarding.test.tsx` (10: helpers; step 1 import state, Upload, Continue only after an import; step 2 prefilled pay and every answer saved in order; resume at the first unanswered; validation message keeps the question; step 3 pick + Looks good; Later); routes test allows `onboarding/index.tsx`; Home test: Make a plan → onboarding. Client suite **102/102**, TypeScript **48**; mutation checks (5) all caught after tightening the Continue test.
 - **Phone test (PO, 2026-11-27), C5 change (owner chose option 2):** unticking a bill saved correctly ("Keep 6 bills"), but an answered question couldn't be reopened and a removed bill vanished. Now tapping an earlier answer bubble reopens that question, and the bills checklist always lists every bill found (`facts.likely_bills`) plus any added, with removed ones unticked so they can be ticked back. Client **104/104**, TypeScript **48**, mutation checks 3/3.
 
+### Adopt project-build-workflow (chore) — done, uncommitted (2026-11-27)
+
+- Branch `chore/adopt-workflow` from `main` in both repos (one PR each). Source: `~/Developer/project-workflow-starter` (public: `itsgivingchaotica/project-workflow-starter`).
+- **Owner choices (2026-11-27):** A level **L0, designed for L1** → **D-029 (ambition level)** (D-001 is taken); B create M0 and close it at once (discovery happened before GitHub tracking); C PR template = the starter's plus Budget Buddy's understanding-check questions and screenshots section; D keep the existing board "Budget Buddy" (#12) and its columns (no `bin/setup-board`); E convert the existing task issues instead of creating new ones; F ON1/C5 committed first (`b6fb95d`, `1373938`); G the unpushed `chore/github-templates` branches deleted.
+- **Server:** `.claude/skills/project-build-workflow/SKILL.md`, `CLAUDE.md` (Builder role, where things are, ground rules, Budget Buddy rules, Phase 3 loop), `.github/ISSUE_TEMPLATE/` (idea, decision, question, spec, screen, task, bug; `config.yml` → the starter's GETTING_STARTED.md), `.github/PULL_REQUEST_TEMPLATE.md`, `bin/setup-labels`, `bin/setup-milestones`, `bin/check-docs` (not in CI). Docs: D-029 in `DESIGN_DECISIONS.md`; ID families I-nn, M0, M3, L0–L4 in `GLOSSARY.md`; status lines added to `GLOSSARY.md`, `PROGRESS.md` and `product/README_DRAFT.md`, so `bin/check-docs` passes (it failed on those three). Existing docs, IDs, handoffs (`HANDOFF_CLAUDE_CODE_NN.md`) and `ci.yml` unchanged.
+- **Client:** `CLAUDE.md` (points to the server's skill, docs and ground rules; npm only, TypeScript baseline, tests out of `app/`, no maths in screens, phone checks and screenshots), the same `.github` templates.
+- **GitHub:** workflow labels in both repos (`bin/setup-labels`); milestones renamed "M2 Plan, goals, Home and coach" and "M3 v1", "M0 Discovery & design" added and closed; the remaining handoff #06 task issues labelled `task` + area with a Traceability block; pinned "Project status" issue in bb-server.

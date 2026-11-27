@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Checks the docs follow the workflow's two mechanical rules:
+#   1. Every doc in docs/ (and every *_TEMPLATE file) has a status line.
+#   2. Every relative Markdown link in the repo points to a file that exists.
+# Usage: bin/check-docs   (from the repo root). Exit code 1 if anything fails.
+set -uo pipefail
+
+fail=0
+
+# 1. Status lines
+while IFS= read -r -d '' f; do
+  case "$f" in
+    */evals/*|*/screens/*) continue ;;  # eval reports and screenshots have their own format
+  esac
+  if ! grep -Eqi '^\**status:?\**:?' "$f"; then
+    echo "✗ no status line: $f"
+    fail=1
+  fi
+done < <(find docs -name '*.md' -print0)
+
+# 2. Relative links
+while IFS= read -r -d '' f; do
+  dir="$(dirname "$f")"
+  # Pull out link targets from [text](target), skipping inline code
+  while IFS= read -r target; do
+    [ -z "$target" ] && continue
+    case "$target" in
+      http://*|https://*|mailto:*|\#*) continue ;;
+    esac
+    path="${target%%#*}"     # drop any #anchor
+    path="${path%% *}"       # drop any "title"
+    [ -z "$path" ] && continue
+    if [ ! -e "${dir}/${path}" ] && [ ! -e "${path}" ]; then
+      echo "✗ broken link in ${f}: ${target}"
+      fail=1
+    fi
+  done < <(sed 's/`[^`]*`//g' "$f" | grep -oE '\]\([^)]+\)' | sed -E 's/^\]\((.*)\)$/\1/')
+done < <(find . -name '*.md' -not -path './.git/*' -not -path './node_modules/*' -print0)
+
+if [ "$fail" -eq 0 ]; then
+  echo "✓ docs check passed"
+fi
+exit "$fail"
