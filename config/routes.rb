@@ -13,6 +13,7 @@ Rails.application.routes.draw do
       # ON1 (onboarding interview)
       get "onboarding", to: "onboarding#show"
       put "onboarding/answers", to: "onboarding#answers"
+      post "onboarding/follow_ups", to: "onboarding#follow_ups" # ON2
       # W1 (Home outlook)
       get "outlook/week", to: "outlook#week"
       # AN2 (spending analytics)

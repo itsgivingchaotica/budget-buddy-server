@@ -232,6 +232,25 @@ Following advice from an experienced AI engineer: build scripts and deterministi
 | L1 Private beta | Up to ~100 invited; real bank CSVs | Error tracking, uptime, backups + restore test, staging DB, privacy note, data export/delete, secrets management | Next level up (design target) |
 | L2 Public launch | Anyone, app stores | L1 + privacy policy and terms, store listings, staging + prod, point-in-time recovery, support, incident checklist, accessibility pass | No |
 
+
+---
+
+## D-030 — Trim follow-up threshold: "well above its 3-month low" = 120%
+
+**Status:** Proposed (Claude Code, 2026-11-27) · for the Planner and the owner to confirm. Built into ON2 (coach follow-ups, #23) so it can be tested; changing it is a one-line constant (`Onboarding::FollowUps::TRIM_RATIO`).
+
+**Context.** SPEC_ONBOARDING_PLAN §5 lets the coach ask `biggest_trim_ok` ("Is trimming your biggest everyday category OK?") when the change appetite isn't "keep" **and** "a category's usual is well above its 3-month low", without a number.
+
+**Proposal.** The top flexible category (largest usual, i.e. median monthly spending over up to 6 covered full months) qualifies when its usual is **at least 120%** of its lowest month among the last 3 full months the data covers, with at least 2 such months. Example: usual $300, lowest month $200 → 150% → qualifies; lowest $260 → 115% → doesn't.
+
+| Option | Effect | Recommendation |
+|---|---|---|
+| **A. 120%** | Asks when there's a clearly cheaper recent month (about a fifth below usual) | **Proposed** (Claude): gentle, matches "small trims" (trim = 10% below usual) |
+| B. 110% | Asks more often, including small dips | More questions, some not worth asking |
+| C. 150% | Asks only after a much cheaper month | Rarely asked |
+
+**Owner decision:** ___ (date)
+
 ---
 
 ## Open questions register

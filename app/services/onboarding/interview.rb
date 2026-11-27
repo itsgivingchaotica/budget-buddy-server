@@ -36,7 +36,9 @@ module Onboarding
       answers = p.answers.is_a?(Hash) ? p.answers : {}
       { version: VERSION, step: answers["step"] || "accounts",
         has_import: user.imports.where(status: "completed").where("inserted_count > 0").exists?,
-        facts:, questions: questions(facts, answers), answers: answers.except("step") }
+        facts:, questions: questions(facts, answers),
+        follow_ups: FollowUps.new(user, client: nil, now:).stored,
+        answers: answers.except("step", "follow_ups_asked") }
     end
 
     # PUT /onboarding/answers: partial, validated per question; nothing is
@@ -77,6 +79,14 @@ module Onboarding
           updates[:change_appetite] = params["change_appetite"]
         else
           errors["change_appetite"] = ["must be keep, trim or push"]
+        end
+      end
+      if params.key?("follow_ups")
+        follow, problems = follow_up_answers(user, answers, params["follow_ups"])
+        if problems.empty?
+          answers["follow_ups"] = (answers["follow_ups"] || {}).merge(follow)
+        else
+          errors["follow_ups"] = problems
         end
       end
       raise Invalid, errors if errors.any?
@@ -153,6 +163,46 @@ module Onboarding
           "detected" => b["detected"] == true || b["detected"] == "true" }
       end
       [bills, problems]
+    end
+
+    # ON2: answers to the follow-ups that were asked, each checked against
+    # the options Rails offered for its slot.
+    def follow_up_answers(user, answers, value)
+      v = hash(value)
+      return [nil, ["must be an object of slot → answer"]] if v.nil?
+
+      asked = Array(answers["follow_ups_asked"]).map { |f| f["slot"] }
+      problems = []
+      out = v.each_with_object({}) do |(slot, raw), acc|
+        unless asked.include?(slot)
+          problems << "#{slot}: wasn't asked"
+          next
+        end
+        case slot
+        when "irregular_income_floor"
+          amount = money(raw)
+          if amount && !amount.negative? && amount <= Obligation::MAX_AMOUNT
+            acc[slot] = format("%.2f", amount)
+          else
+            problems << "#{slot}: must be an amount of 0 or more"
+          end
+        when "goal_priority"
+          order = Array(raw).map { |x| Integer(x.to_s, exception: false) }
+          if order.sort == (0...Array(answers["goals"]).size).to_a
+            acc[slot] = order
+          else
+            problems << "#{slot}: must list every goal once"
+          end
+        else
+          allowed = FollowUps::OPTIONS.fetch(slot, []).map(&:first)
+          if allowed.include?(raw.to_s)
+            acc[slot] = raw.to_s
+          else
+            problems << "#{slot}: must be one of #{allowed.join(', ')}"
+          end
+        end
+      end
+      [out, problems]
     end
 
     # Each goal is checked with the G1 model's own rules (unsaved).
