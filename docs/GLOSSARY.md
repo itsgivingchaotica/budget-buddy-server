@@ -35,6 +35,7 @@ One sentence per ID, so docs and messages can be read without cross-referencing.
 | ID | Plain name | One sentence |
 |---|---|---|
 | S1a | Token checker | Rails code that verifies a Kinde login token is genuine and unexpired. ✅ |
+| K-1 | CI test timeout | The first Home test sometimes ran past Jest's 5-second limit on GitHub's slower machines; fixed by allowing 20 seconds per test. ✅ |
 | KA | Kinde API audience | Registering the API in Kinde so login tokens say they're meant for our server. ✅ |
 | S1b | Require login | Every API endpoint rejects requests without a valid token. ✅ |
 | S2 | `/me` and user linking | The server finds or creates your user record from your Kinde login. ✅ |

@@ -27,6 +27,8 @@ You are the **Builder**. Follow the workflow in `.claude/skills/project-build-wo
 - Migrations are additive and reversible. No data rewrites without a backup, a before/after check and the owner's approval (re-seed with `demo:reset`).
 - Deterministic code decides and calculates; AI assists (D-027). No figure shown to a user comes from a model.
 - `docs/ARCHITECTURE.md` describes only what's built.
+- **The Builder keeps the issue checklists current.** Tick each box on the task issue as soon as it's verified, with a one-line proof comment (test, CI run, commit). Never tick the owner-only items (understanding check, phone test, screenshots) until the owner has done them. Before asking the owner to merge, every box is ticked or explained.
+- **End every report that needs the owner with an "Owner action needed" block:** what to do, where, what to reply, and which boxes it unlocks. The owner shouldn't have to go looking.
 
 ## Project-specific rules
 
@@ -35,7 +37,7 @@ You are the **Builder**. Follow the workflow in `.claude/skills/project-build-wo
 - **Ownership:** every lookup goes through `current_user`; another user's record → 404; new resources add rows to `test/controllers/ownership_matrix_test.rb`.
 - **Money:** `decimal(12,2)`, BigDecimal, JSON as strings (`MoneyJson`; never "-0.00").
 - **Tests:** hand-calculated worked examples, then mutation checks (break the logic on purpose; every break caught).
-- **Report after each task:** what was built, deviations, test counts (server, client, TypeScript baseline), mutation checks, the understanding check (2–3 core files, a walkthrough, 3 questions), phone test steps with the `demo:*` command per state, open questions. When the owner answers the questions: say for each whether it's right, point out gaps, and walk through the key lines with a small real-numbers example, defining finance terms in one sentence.
+- **Report after each task:** what was built, deviations, test counts (server, client, TypeScript baseline), mutation checks, the understanding check (2–3 core files, a walkthrough, 3 questions), phone test steps with the `demo:*` command per state, open questions, the issue boxes now ticked, and the **Owner action needed** block. When the owner answers the questions: say for each whether it's right, point out gaps, and walk through the key lines with a small real-numbers example, defining finance terms in one sentence.
 - **Handoff message order** (after the OK to commit): push commands → server PR → phone test steps → client PR (with the screenshots section). Create PRs with `gh pr create` after the owner pushes, with the issue's labels and milestone.
 - **Docs check:** `bin/check-docs` (every doc has a status line; relative links resolve).
 

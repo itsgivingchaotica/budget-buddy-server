@@ -1,17 +1,17 @@
 ---
 name: project-build-workflow
-description: "Use when starting or running any software project with a planning chat and a coding agent - idea intake, ambition level, GitHub-tracked design, specs, handoffs, task IDs, PRs and progress logs."
+description: "Use when starting or running any software project with a planning chat and a coding agent - idea intake, ambition level, GitHub-tracked design, specs, handoffs, task IDs, PRs and progress logs, or adopting it in an existing project."
 ---
 
 # Project build workflow (Planner → Builder → Owner)
 
-A reusable workflow drawn from the Budget Buddy project. Three roles:
+A reusable workflow drawn from the Budget Buddy project. The master copy of the files lives in the `project-workflow-starter` template repo. Three roles:
 
 - **Planner**: the planning chat or Claude Project. Owns the *what* and *why*: idea, level, brief, scope, decisions, backend shape, design, specs, handoffs.
 - **Builder**: the coding agent in the repo. Owns the *how*: GitHub setup, plan, code, tests, PRs, progress log, as-built architecture.
 - **Owner**: the human. Approves every stage, spec and deviation, and every commit/push. The owner's explicit OK is the only source of truth.
 
-First, work out which role you're in this session (a repo with code = Builder; a planning conversation = Planner) and follow that role's section. For a brand-new idea, start at Phase 0.
+First, work out which role you're in this session (a repo with code = Builder; a planning conversation = Planner) and follow that role's section. For a brand-new idea, start at Phase 0. For a project that already exists, see "Adopting this workflow in an existing project".
 
 ## Standing rules (every project, both roles)
 
@@ -87,8 +87,8 @@ The Planner writes Handoff #00. The Builder (Claude Code, using `gh`) creates:
    - idea triage: `idea:core`, `idea:later`
    - area: `area:product`, `area:design`, `area:backend`, `area:client`, `area:infra`, `area:ai`
    - level: `level:L0` … `level:L4` (for items that only apply from a given level)
-3. **Milestones:** `M0 Discovery & design`, then `M1`, `M2`… from the scope.
-4. **A GitHub Project board** with a Status field: `Inbox → Shaping → Proposed → Approved → Ready for handoff → In build → Done`, plus `Parked`. Views: "Design" (idea/decision/spec/screen) and "Build" (task/bug).
+3. **Milestones:** `M0 Discovery & design` (skip it with `--no-m0` when discovery happened before GitHub tracking), then `M1`, `M2`… from the scope. The script treats a milestone with the same code (M2…) as existing, so re-runs never duplicate.
+4. **A GitHub Project board** with a Status field: `Inbox → Shaping → Proposed → Approved → Ready for handoff → In build → In review → Done`, plus `Parked`. "In review" = PR open, waiting for the owner's check and merge. Views: "Design" (idea/decision/spec/screen) and "Build" (task/bug).
 5. **Pinned issues:** "Project status" (current stage, level, next decision) and "Constraints (C-n)".
 6. **The PR template** (Phase 3) and minimal CI (it can run only a docs check until code exists).
 
@@ -321,8 +321,32 @@ For each task in the handoff's order:
 4. **Test:** the spec's worked examples as tests, hand-calculated cases, edge cases, ownership rows, then **mutation checks** (break the logic on purpose; every break must be caught).
 5. **Log in `PROGRESS.md`** (template below) with the status "done, uncommitted".
 6. **Report to the owner** (template below) and wait. Don't commit without an explicit OK.
-7. **On OK:** commit, push, open the PR (template below, `Closes #task`), wait for green CI, and merge when the owner says so. Update the log entry to "merged", record the owner's approval line, and update `ARCHITECTURE.md` with what's now built.
+7. **On OK:** commit, push, open the PR (template below, `Closes #task`; move the issue to "In review"), wait for green CI, and merge when the owner says so. Update the log entry to "merged", record the owner's approval line, and update `ARCHITECTURE.md` with what's now built.
 8. **Hand deviations back** to the Planner for the decision log (a comment on the spec issue, plus the progress log).
+9. **Keep the issue's checklists current** (rules below), so the issue closes with every box ticked or explained.
+
+### Issue checklists: the Builder keeps them current
+
+The owner should never have to tick boxes or go looking for what needs them. The Builder owns every checklist in a task issue: the task acceptance list and any older "Acceptance criteria" list.
+
+- **Tick as soon as it's true, with proof.** Tick a box the moment it's verified, and add a one-line comment on the issue with the evidence (test file and name, CI run link, commit, doc section). Never tick something that isn't true.
+- **When each box gets ticked:**
+  - spec worked examples, ownership rows, mutation checks, AI fallbacks → when the tests and mutation checks pass (step 4)
+  - `ARCHITECTURE.md` / `PROGRESS.md` updated → when those edits are made
+  - CI green → when the PR's checks pass
+  - owner items (understanding check, phone test, screenshots) → only after the owner has done them
+- **Owner-only items are asked for, never assumed.** Every report that needs something from the owner ends with an **Owner action needed** block (template below). When the owner replies, the Builder records it ("answered (owner, date)") and ticks the box.
+- **A box that can't be met** stays unticked, with a comment saying why and whether it's a deviation for the decision log.
+- **Before asking to merge:** re-read the issue. Every box is ticked or explained. The merge request lists any exceptions, and only then does the PR say `Closes #n`.
+
+### Owner action needed (end of any report that needs the owner)
+
+```
+**Owner action needed**
+1. <What to do> — <where: file, PR, phone> — <what to reply, e.g. "your 3 answers" or "OK to commit">
+2. …
+I'll tick on the issue once you reply: <the boxes this unlocks>.
+```
 
 ### Commit message
 
@@ -351,6 +375,7 @@ e.g. `G2 (goal and debt maths): GoalCalculator and DebtCalculator`. The body cov
 4. **Understanding check:** the 2–3 files that hold the core logic, a plain-language walkthrough, and 3 questions the owner should be able to answer. The owner reads those files before approving.
 5. Exact manual test steps (device/browser), including demo-data commands.
 6. Open PO-nn questions and the decision needed to commit.
+7. Which issue boxes are now ticked (with proof), and the **Owner action needed** block for the rest.
 
 ### Pull request description (`.github/PULL_REQUEST_TEMPLATE.md`)
 
@@ -377,8 +402,18 @@ Implements <spec path §n> · Handoff #NN step n · Closes #<task issue>
 ### Migrations
 - name — additive, rollback tested | none
 
+### Understanding check
+Core files above, plus 3 questions the owner should be able to answer:
+1. …
+2. …
+3. …
+
 ### How to check manually
 1. …
+
+### Screenshots (demo data only, for any PR that changes a screen)
+| Screen / state | Before | After |
+|---|---|---|
 
 ### Out of scope / follow-ups
 - … (#issue)
@@ -425,6 +460,18 @@ What happens · What should happen (spec §) · Steps (synthetic data only) · S
 - Fill the README with as-built facts, the level, and links to the design trail (Idea Card, decisions, specs, board); write a demo script.
 - Close the GitHub milestone; move `later` ideas into the next milestone or leave them parked.
 - Planner updates the decision log, glossary and scope, and writes the next handoff.
+
+## Adopting this workflow in an existing project
+
+The rule: **keep what exists and adapt; never duplicate.** Before creating anything, the Builder lists what's already there and proposes a plan.
+
+- **IDs and docs:** keep existing ID schemes, doc names and handoff names. The ambition level becomes the next free D-0nn if D-001 is taken. Add the new ID families to the glossary.
+- **Milestones:** rename the existing ones rather than creating new ones, so issues and PRs stay attached. Run `bin/setup-milestones --no-m0` if discovery happened before GitHub tracking (or create M0 and close it with a note).
+- **Board:** keep an existing board and its columns if it already has "In build" and "In review" equivalents; add the Design and Build views.
+- **Issues:** convert existing open issues (add labels, the Traceability block and the Acceptance checklist) instead of creating duplicates. Don't backfill issues for merged work.
+- **Templates and `CLAUDE.md`:** copy them, then add the project's own existing rules to `CLAUDE.md` and any project-specific PR sections.
+- **CI:** keep the existing CI. Run `bin/check-docs` once and fix what it reports in the same chore PR before adding it to CI.
+- **Order:** commit or stash in-progress work first, so the adoption branch starts from a clean `main`.
 
 ## Starting a new project with this workflow
 
