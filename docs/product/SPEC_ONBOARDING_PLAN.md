@@ -1,6 +1,6 @@
 # Budget Buddy — Onboarding and plan drafting spec (ON1 onboarding questions, ON2 coach follow-ups, PL1 plan drafting, PL2 plan approval, C5 onboarding screens, C6 plan approval screen)
 
-**Status:** APPROVED by the product owner (2026-11-25), including the four §10 decisions. Milestone 2.
+**Status:** APPROVED by the product owner (2026-11-25), including the four §10 decisions. **Amended 2026-11-28 (owner approved):** §5 threshold (D-030), §6.2, §6.4, §7 (D-032). Milestone 2.
 **Builds on:** D-002 (import → interview → coach drafts → user approves; small changes first; AI proposes, Rails calculates, user decides), D-010 (financial profile), D-019 (first run), D-021 (Left to spend), MVP_SCOPE P5–P7 and success criterion 1 (sign-up to approved plan in under 5 minutes), PO-4/PO-5/PO-14.
 **Visual source:** canvas page "Home & onboarding" (steps 1–4). Reference screenshots: `docs/product/screens/Onboard-*.png` (to be exported with this spec).
 **Depends on:** C2/C2b (accounts, import, review groups), AN1 (spending analytics), OB1 (bills), G1/G2 (goals and goal maths), DM-3 (category budgets).
@@ -68,7 +68,7 @@ After question 5, the coach may ask **at most 2** short follow-ups. To keep this
 | Slot | Asked when (Rails decides eligibility) | Options (from Rails) | Used by |
 |---|---|---|---|
 | `irregular_income_floor` | Pay = "It varies" | Amount: "A month I can count on" | income check (§6.2) |
-| `biggest_trim_ok` | Appetite ≠ keep and a category's usual is well above its 3-month low | Yes · A little · Leave it alone, for the top category | option filter |
+| `biggest_trim_ok` | Appetite ≠ keep and the top everyday category's usual is **≥ 120%** of its lowest recent month (D-030) | Yes · A little · Leave it alone, for the top category | option filter |
 | `goal_priority` | Two or more goals | Order the goals | goal order in plan |
 | `bill_missing` | No rent/housing bill selected but Rent spending exists | Add it · It's included already · I don't pay rent | bills |
 | `side_income_use` | Side income counted | Toward goals · Everyday spending · Both | goal funding note |
@@ -87,12 +87,16 @@ For each flexible category with spending in the period:
 - Fewer than 2 full months of data → `keep` only, marked "new".
 - Flexible categories with no spending get no budget (can be added later in the Plan tab).
 
-### 6.2 Income check (Rails)
+### 6.2 Income check (Rails) (amended 2026-11-28, D-032)
 
-- **Monthly income** = pay-pattern income (median of the last 3 full months of Income on spending/bills accounts) + side income if "Yes, count it"; or the stated floor if pay varies.
-- **Committed** = bills (step 3) + goal contributions per month from G2 (dated goals' weekly need × 52 / 12; debt payment is already a bill).
+- **Monthly income:**
+  - **Regular pay:** the median of the last 3 full months of Income on spending/bills accounts, **unless the user changed the paycheck amount in question 1**; then their amount × paychecks per month (weekly 52/12, every 2 weeks 26/12, twice a month 2, monthly 1), using the **same monthly-average function as bills** (OB1).
+  - **Pay "It varies":** the stated floor (`irregular_income_floor`) if the user answered it; otherwise the **lowest** of the last 3 full months, shown as "Based on your lowest recent month".
+  - **Plus side income** if the user chose "Yes, count it".
+- **Committed** = kept bills (step 3, monthly-averaged with the OB1 function) + dated goals' monthly contributions (G2 weekly need × 52 / 12) + **each debt goal's monthly payment, unless a kept bill is in Debt Payments** (never counted twice).
 - **Room for everyday spending** = income − committed.
 - Rails sends each option set **plus** `room` to the model. After the model chooses, Rails recomputes the total; the draft records `fits: true/false` and the gap. If the cheapest allowed choices still don't fit, the draft says so honestly (§6.5) rather than inventing cuts.
+- **Rent added from a follow-up:** if the user answered `bill_missing` with "Add it", the draft adds a Rent bill at the **median monthly Rent spending of the last 3 full months**, on the usual day, labelled "from your spending" and editable on the draft.
 
 ### 6.3 The model's job (structured output, one call)
 
@@ -109,6 +113,8 @@ For each flexible category with spending in the period:
 }
 ```
 
+**Goal order:** the user's order from the `goal_priority` follow-up wins; the model's `goal_order` is used only when the user didn't answer it.
+
 **Rules Rails enforces:**
 - Every candidate category appears **exactly once**; `option` must be one that exists for it.
 - `reason` required for `trim`/`stretch`, optional for `keep`.
@@ -120,9 +126,11 @@ For each flexible category with spending in the period:
 
 **Model and cost:** `claude-haiku-5-5`, one call of roughly 1–2k tokens; checked against the daily AI cap; per-user limit of 5 drafts a day.
 
-### 6.4 Draft storage
+### 6.4 Draft storage (amended 2026-11-28, D-032)
 
-`POST /api/v1/plan_proposals` builds candidates, calls the model, validates, and stores a `plan_proposals` row (status `draft`) whose payload contains **every Rails figure** (usual, chosen amount per category, bills, goals with G2 results, income check), the model's text, `source` (`model` / `fallback`), model id and timestamps. At most one open draft per user (a new draft replaces the old). `GET /api/v1/plan_proposals/current` returns it.
+`POST /api/v1/plan_proposals` builds candidates, calls the model, validates, and stores a `plan_proposals` row whose payload contains **every Rails figure** (usual, chosen amount per category, bills, goals with G2 results, income check), the model's text, `source` (`model` / `fallback`), model id and timestamps. `GET /api/v1/plan_proposals/current` returns it. Limit: 5 drafts a day per user (`AiRateLimit`, daily window).
+
+**Statuses:** `draft` → `approved`, or `superseded` when a newer draft replaces it (at most one open draft per user). **Stale** isn't stored: it's worked out on read (older than 7 days, or created before a newer import), and a stale draft must be redrafted.
 
 ### 6.5 What the draft screen shows (C6, canvas step 4)
 
@@ -134,16 +142,22 @@ For each flexible category with spending in the period:
 - Footer: "Nothing is saved until you approve. Estimates assume a fixed APR and no new charges."
 - Buttons: **Adjust** (scrolls to budgets) and **Approve plan**.
 
-## 7. Plan approval (PL2)
+## 7. Plan approval (PL2) (amended 2026-11-28, D-032)
 
 `POST /api/v1/plan_proposals/:id/approve`, in **one DB transaction**:
-- `category_budgets` for each chosen amount, `effective_from` = 1st of the current month (user's time zone);
-- `obligations` from the chosen bills; `goals` (and any starting balances) from the draft;
-- the proposal → `approved`, `approved_at` set; links from created rows back to it (as in the schema).
+- `category_budgets` for each chosen amount, `effective_from` = 1st of the current month (user's time zone). This **replaces this month's budget only for categories in the draft**; budgets in other categories stay untouched.
+- `obligations` from the chosen bills and `goals` (with any starting balances) from the draft. A bill or goal **with the same name as an existing one is skipped**, and the response lists what was kept (e.g. "You already had Rent; kept yours") so the app can say so.
+- The proposal → `approved`, `approved_at` set; links from created rows back to it (as in the schema).
 
-Rules: approving twice returns the existing result (idempotent) or 409; a draft older than 7 days, or created before a newer import, is marked stale and must be redrafted (the screen offers "Refresh my plan"); another user's proposal is a 404. After approval the app goes to **Home**, which now shows Left to spend.
+Rules:
+- **A second approve** returns **409** with `{"error": "already_approved", "approved_at": "…"}`. The app treats this as success and goes to Home, so a double tap or a retry after a timeout never shows an error when the plan saved.
+- A **stale** draft (§6.4) is refused with 422 and the screen offers "Refresh my plan".
+- Another user's proposal is a 404.
+- After approval the app goes to **Home**, which now shows Left to spend.
 
 Adjustments before approval: `PATCH /api/v1/plan_proposals/:id` with item changes (budget amount, bill on/off or edited, goal fields); Rails recomputes the fit line and G2 figures and returns the updated draft.
+
+**Build as three PRs:** PL1 (drafting, server #24) → PL2 (approval, server #25) → C6 (approval screen, client #20).
 
 ## 8. Step 3: a few uncertain merchants
 
