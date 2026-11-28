@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_26_120000) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_28_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -259,6 +259,22 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_26_120000) do
     t.check_constraint "source::text = ANY (ARRAY['interview'::character varying, 'user'::character varying, 'coach'::character varying]::text[])", name: "obligations_source_check"
   end
 
+  create_table "plan_proposals", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "status", default: "draft", null: false
+    t.string "source", null: false
+    t.string "model"
+    t.jsonb "payload", default: {}, null: false
+    t.datetime "approved_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_plan_proposals_on_user_id"
+    t.index ["user_id"], name: "index_plan_proposals_one_draft_per_user", unique: true, where: "((status)::text = 'draft'::text)"
+    t.check_constraint "(status::text = 'approved'::text) = (approved_at IS NOT NULL)", name: "plan_proposals_approved_at_check"
+    t.check_constraint "source::text = ANY (ARRAY['model'::character varying, 'fallback'::character varying]::text[])", name: "plan_proposals_source_check"
+    t.check_constraint "status::text = ANY (ARRAY['draft'::character varying, 'approved'::character varying, 'superseded'::character varying]::text[])", name: "plan_proposals_status_check"
+  end
+
   create_table "tags", force: :cascade do |t|
     t.string "name"
     t.datetime "created_at", null: false
@@ -363,6 +379,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_26_120000) do
   add_foreign_key "obligations", "accounts"
   add_foreign_key "obligations", "categories"
   add_foreign_key "obligations", "users"
+  add_foreign_key "plan_proposals", "users"
   add_foreign_key "tags", "categories"
   add_foreign_key "transactions", "accounts"
   add_foreign_key "transactions", "categories"

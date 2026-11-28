@@ -74,6 +74,9 @@ class OwnershipMatrixTest < ActionDispatch::IntegrationTest
     "obligations#create unknown category" =>
                                     [:post,   -> { api_v1_obligations_url }, { name: "X", amount: "1", category: "no-such-category", first_due_on: "2026-12-01" }, :unprocessable_entity],
 
+    # --- plan proposals (PL1) -------------------------------------------------------------
+    "plan_proposals#update other" => [:patch, -> { api_v1_plan_proposal_url(plan_proposals(:two_draft)) }, { budgets: [] }, :not_found],
+
     # --- goals (G1) ---------------------------------------------------------------------
     "goals#show other"           => [:get,    -> { api_v1_goal_url(goals(:two_trip)) }, nil, :not_found],
     "goals#update other"         => [:patch,  -> { api_v1_goal_url(goals(:two_trip)) }, { name: "X" }, :not_found],
@@ -107,7 +110,7 @@ class OwnershipMatrixTest < ActionDispatch::IntegrationTest
 
   # A fingerprint of everything the rows could touch.
   def snapshot
-    [User, Budget, Entry, Tag, Category, Account, Import, Transaction, MerchantRule, TransferLink, CategoryCorrection, CategoryBudget, Obligation, ObligationPayment, Goal, GoalContribution].to_h do |model|
+    [User, Budget, Entry, Tag, Category, Account, Import, Transaction, MerchantRule, TransferLink, CategoryCorrection, CategoryBudget, Obligation, ObligationPayment, Goal, GoalContribution, PlanProposal].to_h do |model|
       [model.name, model.order(:id).map { |r| r.attributes.except("updated_at") }]
     end.merge("EntriesTags" => Entry.order(:id).map { |e| e.tag_ids.sort })
   end
@@ -155,6 +158,9 @@ class OwnershipMatrixTest < ActionDispatch::IntegrationTest
 
     get api_v1_goals_url(status: "all"), headers: auth_headers, as: :json
     assert_equal [], response.parsed_body["goals"]
+
+    get api_v1_plan_proposals_current_url, headers: auth_headers, as: :json
+    assert_nil response.parsed_body["plan_proposal"], "another user's draft is never the caller's current plan"
 
     get review_groups_api_v1_transactions_url, headers: auth_headers, as: :json
     assert_not_includes response.parsed_body["groups"].flat_map { |g| g["accounts"].map { |a| a["id"] } }, accounts(:two_checking).id

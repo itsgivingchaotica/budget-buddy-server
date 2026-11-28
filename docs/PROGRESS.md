@@ -1434,3 +1434,17 @@ So the phone was already signed out of Kinde locally, while the app kept its use
 - Workflow skill Phase 3 step 9, "Issue checklists: the Builder keeps them current" and "Owner action needed" sections, report item 7 (copied from the starter, which is the master copy); the same ground rule in both `CLAUDE.md` files. Branch `chore/checklist-rule` in each repo (server #36, client #35).
 - Catch-up: boxes ticked with proof comments on server #23 and client #31 (ON2) and client #19 (C5); the open M2 issues are unstarted, so nothing on them is true yet.
 - Owner (2026-11-28): the ON2 client box "earlier answers can still be tapped" accepted as is; the "change earlier answers" link during the follow-ups is client #36 (M3). D-030 (trim follow-up threshold) to be settled in the Planner chat.
+
+### PL1 (plan drafting) #24 — done, uncommitted (2026-11-28)
+
+- Branch `feature/plan-drafting` (closes #24). Spec `SPEC_ONBOARDING_PLAN.md` §6 as amended by D-030 (trim follow-up threshold) and D-032 (plan drafting and approval details), §9 automated 2, 3, 4 and 7. Details in `ARCHITECTURE.md`.
+- Built: the `plan_proposals` table (additive, rollback tested), `PlanCandidates`, `PlanFigures`, `PlanDrafter`, `PlanEdits`, `POST /plan_proposals`, `GET /plan_proposals/current`, `PATCH /plan_proposals/:id`, the plan limit in `AiRateLimit` (5 a day), `demo:plan_draft`.
+- **Small choices inside the spec:**
+  1. Stretch is offered only if it's at least $5 below the next option up (as trim is below keep), so two options never show the same amount.
+  2. A category whose usual is $0 (spending in too few months) gets no budget, like a category with no spending.
+  3. A garbled model answer (`BadOutput`) gets the one retry, like a failed check.
+  4. **Owner change (2026-11-28):** "Push me a bit" falls back like "Small trims" (trim the 2 largest non-essential categories), not keep everything as §6.3's text says: the fallback never gives less change than the user asked for, and stretch stays model-only. For the Planner's decision log (proposed D-033 (fallback for "Push me a bit")).
+  5. An invalid `goal_order` from the model is dropped (the default order is used), not retried.
+  6. **Owner (2026-11-28):** an unknown category in the model's answer stays strict (the check fails → one retry → fallback), rather than dropping just that item.
+- Tests: `plan_figures_test.rb` (5: candidates and rounding; < 2 months and the trim follow-up; income median / changed paycheck / twice a month / floor / lowest month / side income; the fit line with goals, debt counted once, bills and goals switched off; rent from "Add it"), `plan_drafter_test.rb` (7: model choice + stored + superseded; every check; retry then fallback; push falls back like small trims; refusal / outage / cap; goal order; request capture), `plan_proposals_test.rb` (6: POST + GET; PATCH recompute and all-or-nothing; superseded 409 and stale 422; 5 a day; stale after a newer import; no draft), ownership-matrix row and list check. Server suite **617 pass**; mutation checks 26/27 caught (+1 test for a goal switched off; the survivor "trim < keep" is equivalent, since every option is a multiple of $5).
+

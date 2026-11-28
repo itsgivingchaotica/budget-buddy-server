@@ -14,6 +14,9 @@ Rails.application.routes.draw do
       get "onboarding", to: "onboarding#show"
       put "onboarding/answers", to: "onboarding#answers"
       post "onboarding/follow_ups", to: "onboarding#follow_ups" # ON2
+      # PL1 (plan drafting): the coach's draft plan
+      get "plan_proposals/current", to: "plan_proposals#current"
+      resources :plan_proposals, only: %i[create update]
       # W1 (Home outlook)
       get "outlook/week", to: "outlook#week"
       # AN2 (spending analytics)

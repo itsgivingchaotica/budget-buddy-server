@@ -1,0 +1,6 @@
+# PL1 (plan drafting). `two_draft` belongs to users(:two), for the ownership matrix.
+two_draft:
+  user: two
+  status: draft
+  source: fallback
+  payload: { "categories": [], "bills": [], "goals": [], "income": { "monthly": "0.00" } }
