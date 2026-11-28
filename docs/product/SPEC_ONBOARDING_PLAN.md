@@ -121,6 +121,7 @@ For each flexible category with spending in the period:
 - **No digits anywhere in model text.** Every figure on screen comes from Rails, so a made-up number can't appear. (Same principle as the coach's figure check, enforced more strictly.)
 - Appetite: "Keep things as they are" → all `keep` (the model isn't called for budgets; only the intro); "Small trims" → at most 3 trims, no stretch.
 - **At least one change (D-034):** for "Small trims" and "Push me a bit", at least one category must get a non-`keep` option whenever any non-essential category has a trim. If no trim exists, the model is told so, and the intro must not claim changes.
+- **Goal nudge (D-034):** Rails also sends two yes/no flags: money left over each month, and goals without a date. When both are true, the intro may add one line nudging the user to give their goals a date. No digits or goal names.
 - Text is checked for length and treated as plain text in the app (no markup).
 
 **On failure:** one retry with the validation errors; then a **deterministic fallback**: keep everything, except for "Small trims" **and "Push me a bit"**, trim the 2 largest non-essential categories that have a trim (D-033: the fallback never gives less change than the user asked for; stretch stays model-only; "Keep things as they are" keeps everything); generic reasons from a fixed list. The draft records `source: "fallback"`, and the screen looks the same.

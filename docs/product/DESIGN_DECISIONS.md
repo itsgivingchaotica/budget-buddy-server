@@ -278,8 +278,9 @@ The `biggest_trim_ok` follow-up is eligible only when the top everyday category'
 2. **Unplanned money and undated goals on C6:** show "Unplanned each month: $X" (Rails figure); undated goals show "No date set · add a date to get a weekly amount" with an Add a date action, never "$0.00 a month". (The sample left $1,690/month unplanned while two goals got $0.)
 3. **Tidy bill names at detection** (Title Case, common bank noise removed; raw merchant key kept for matching; editable). Built as a small separate fix PR.
 4. **Rounding unchanged** (keep rounds up to $5); C6 shows "Your usual" in whole dollars.
+5. **Intro nudge toward goals (added 2026-11-28):** Rails sends the model two yes/no flags, "money left over each month" and "goals without a date". When both are true, the intro may add one line nudging the user to date their goals (e.g. "You'll have room left each month. Give your goals a date and I'll turn it into a weekly amount."). No digits, no goal names; same checks. The re-run sample (3 trims, truthful intro, $1,755.93 unplanned) passed the Planner's tone review.
 
-**Where each lands:** 1 in PL1 before its PR (sample re-run); 3 as its own fix PR; 2 and 4 in C6.
+**Where each lands:** 1 and 5 in PL1 before its PR (sample re-run); 3 as its own fix PR; 2 and 4 in C6.
 
 ---
 

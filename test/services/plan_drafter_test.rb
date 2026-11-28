@@ -139,6 +139,31 @@ class PlanDrafterTest < ActiveSupport::TestCase
     assert_includes client.calls.first[:user], '"trims_available":false'
   end
 
+  test "D-034 item 5: two yes/no flags for the goal nudge, every combination; no amounts or goal names" do
+    undated = [{ "kind" => "purchase", "name" => "Bike", "amount" => "400.00" }]
+    dated = [{ "kind" => "upcoming_payment", "name" => "Car insurance", "amount" => "600.00", "date" => "2027-01-18" }]
+    # Income 4630; everyday at keep 410 + 290 + 20 + 100 = 820. A $3,900 rent bill leaves 4630 − 3900 − 820 < 0 → none left over.
+    big_rent = [{ "name" => "Rent", "amount" => "3900.00", "day" => 1, "category" => "rent" }]
+    {
+      [true, true] => { "goals" => undated },
+      [true, false] => { "goals" => dated },
+      [false, true] => { "goals" => undated, "bills" => big_rent },
+      [false, false] => { "goals" => dated, "bills" => big_rent }
+    }.each do |(left_over, no_date), extra|
+      answers({ "change_appetite" => "trim" }.merge(extra))
+      client = FakeClient.new(answer(GOOD))
+      draft(client)
+      request = JSON.parse(client.calls.first[:user][/\{.*\}/])
+      assert_equal [left_over, no_date], request.values_at("money_left_over_each_month", "goals_without_a_date"), extra.inspect
+      assert_not_includes client.calls.first[:user], "Bike"
+      assert_equal 3, request["max_trims"], "small trims: the limit is in the request itself"
+    end
+    nudge = "You'll have room left each month. Give your goals a date and I'll turn it into a weekly amount."
+    answers("change_appetite" => "trim", "goals" => undated)
+    assert_equal nudge, draft(FakeClient.new(answer(GOOD, intro: nudge))).payload["intro"], "the nudge passes the same checks"
+    assert_equal "fallback", draft(FakeClient.new(answer(GOOD, intro: "Give your 2 goals a date."))).source, "no digits, as ever"
+  end
+
   test "one retry with the problems listed, then the deterministic fallback (§6.3)" do
     answers("change_appetite" => "trim")
     bad = answer(GOOD.first(3))
