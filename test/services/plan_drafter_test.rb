@@ -94,7 +94,7 @@ class PlanDrafterTest < ActiveSupport::TestCase
 
   test "Rails' checks: missing category, unknown option, digits, too long, extra keys, appetite limits (§6.3)" do
     candidates = PlanCandidates.call(answers("change_appetite" => "trim"), @user.financial_profile.answers)
-    check = ->(data, appetite = "trim") { PlanDrafter.validate(data, candidates, [], appetite:).last }
+    check = ->(data, appetite = "trim") { PlanDrafter.validate(data, candidates, [], appetite:)[1] }
     assert_empty check.(answer(GOOD))
     assert_includes check.(answer(GOOD.first(3))), "missing categories: clothing"
     assert_includes check.(answer(GOOD[0..2] + [["clothing", "stretch", "x"]])), "category clothing has no option stretch"
@@ -103,30 +103,31 @@ class PlanDrafterTest < ActiveSupport::TestCase
     assert_includes check.(answer(GOOD.map { |s, o, _| [s, o, ""] })), "category dining-out needs a reason for trim"
     assert_includes check.(answer(GOOD, intro: "Save $50 a week!")), "intro contains digits"
     assert_includes check.(answer(GOOD[0..2] + [["clothing", "trim", "Cut 10%"]])), "a reason contains digits"
-    assert_includes check.(answer(GOOD, intro: "x" * 201)), "intro is longer than 200 characters"
+    assert_includes check.(answer(GOOD, intro: "x" * 241)), "intro is longer than 240 characters"
+    assert_empty check.(answer(GOOD, intro: "x" * 240)), "240 is allowed (D-035)"
     assert_includes check.(answer(GOOD[0..2] + [["clothing", "trim", "y" * 81]])), "a reason is longer than 80 characters"
     assert_includes check.(answer(GOOD).merge("amount" => 5)), "unknown keys: amount"
     four = [["groceries", "trim", "a"], ["dining-out", "trim", "b"], ["entertainment", "keep", ""], ["clothing", "trim", "c"]]
     assert_empty check.(answer(four)), "3 trims is the limit for small trims"
     push = PlanCandidates.call(answers("change_appetite" => "push"), @user.financial_profile.answers)
     stretchy = [["groceries", "trim", "a"], ["dining-out", "stretch", "b"], ["entertainment", "stretch", "c"], ["clothing", "trim", "d"]]
-    assert_empty PlanDrafter.validate(answer(stretchy), push, [], appetite: "push").last, "push: any options, any count"
-    assert_includes PlanDrafter.validate(answer(stretchy), push, [], appetite: "trim").last, "no stretch for small trims"
+    assert_empty PlanDrafter.validate(answer(stretchy), push, [], appetite: "push")[1], "push: any options, any count"
+    assert_includes PlanDrafter.validate(answer(stretchy), push, [], appetite: "trim")[1], "no stretch for small trims"
     five = { categories: %w[a b c d e].map { |s| { category: s, options: { "keep" => 50, "trim" => 45 } } } }
     trims = ->(n) { answer(%w[a b c d e].each_with_index.map { |s, i| [s, i < n ? "trim" : "keep", "A little less."] }) }
-    assert_empty PlanDrafter.validate(trims.(3), five, [], appetite: "trim").last
-    assert_includes PlanDrafter.validate(trims.(4), five, [], appetite: "trim").last, "at most 3 trims for small trims"
+    assert_empty PlanDrafter.validate(trims.(3), five, [], appetite: "trim")[1]
+    assert_includes PlanDrafter.validate(trims.(4), five, [], appetite: "trim")[1], "at most 3 trims for small trims"
   end
 
   test "D-034: small trims and push must change something when a non-essential trim exists; otherwise the model is told" do
     all_keep = answer(GOOD.map { |slug, _, _| [slug, "keep", ""] })
     %w[trim push].each do |appetite|
       candidates = PlanCandidates.call(answers("change_appetite" => appetite), @user.financial_profile.answers)
-      assert_includes PlanDrafter.validate(all_keep, candidates, [], appetite:).last,
+      assert_includes PlanDrafter.validate(all_keep, candidates, [], appetite:)[1],
                       "choose at least one trim or stretch: the user asked for small changes", appetite
     end
     keep = PlanCandidates.call(answers("change_appetite" => "keep"), @user.financial_profile.answers)
-    assert_empty PlanDrafter.validate(all_keep, keep, [], appetite: "keep").last, "keep things as they are: no change needed"
+    assert_empty PlanDrafter.validate(all_keep, keep, [], appetite: "keep")[1], "keep things as they are: no change needed"
 
     # Only groceries (essential, has a trim) and entertainment (no trim) left: no non-essential trim exists.
     Transaction.where(category: [@dining, @clothing]).delete_all
@@ -137,6 +138,11 @@ class PlanDrafterTest < ActiveSupport::TestCase
     assert_equal ["model", 1], [proposal.source, client.calls.size], "all keep is accepted when no non-essential trim exists"
     assert_includes client.calls.first[:user], "No category can be trimmed this time"
     assert_includes client.calls.first[:user], '"trims_available":false'
+    assert_equal false, JSON.parse(client.calls.first[:user][/\{.*\}/])["limits"]["at_least_one_change"], "no trim exists: no change required"
+    answers("change_appetite" => "keep")
+    keep_client = FakeClient.new(answer([]))
+    draft(keep_client)
+    assert_equal false, JSON.parse(keep_client.calls.first[:user][/\{.*\}/])["limits"]["at_least_one_change"], "keep: no change required"
   end
 
   test "D-034 item 5: two yes/no flags for the goal nudge, every combination; no amounts or goal names" do
@@ -156,7 +162,9 @@ class PlanDrafterTest < ActiveSupport::TestCase
       request = JSON.parse(client.calls.first[:user][/\{.*\}/])
       assert_equal [left_over, no_date], request.values_at("money_left_over_each_month", "goals_without_a_date"), extra.inspect
       assert_not_includes client.calls.first[:user], "Bike"
-      assert_equal 3, request["max_trims"], "small trims: the limit is in the request itself"
+      assert_equal({ "each_category_exactly_once" => true, "max_trims" => 3, "stretch_allowed" => false, "at_least_one_change" => true,
+                     "intro_max_characters" => 240, "reason_max_characters" => 80, "reason_required_for" => %w[trim stretch],
+                     "digits_allowed" => false }, request["limits"], "every limit Rails checks is in the request")
     end
     nudge = "You'll have room left each month. Give your goals a date and I'll turn it into a weekly amount."
     answers("change_appetite" => "trim", "goals" => undated)
@@ -193,6 +201,21 @@ class PlanDrafterTest < ActiveSupport::TestCase
     assert_equal({ "groceries" => ["keep", "410.00"], "dining-out" => ["trim", "260.00"], "entertainment" => ["keep", "20.00"],
                    "clothing" => ["trim", "90.00"] }, picks(proposal))
     assert_not(proposal.payload["categories"].any? { |c| c["option"] == "stretch" })
+  end
+
+  test "the draft records which checks failed on each try, as generic codes only" do
+    answers("change_appetite" => "trim")
+    four = answer([["groceries", "trim", "a"], ["dining-out", "trim", "b"], ["entertainment", "keep", ""], ["clothing", "trim", "Cut 10% here"]],
+                  intro: "x" * 241)
+    retried = draft(FakeClient.new(four, answer(GOOD)))
+    assert_equal({ "tries" => [%w[intro_too_long reason_digits], []] }, retried.payload["checks"])
+    fallen = draft(FakeClient.new(answer(GOOD.first(3)), AnthropicClient::BadOutput.new("cut")))
+    assert_equal({ "tries" => [%w[missing_category], %w[bad_output]] }, fallen.payload["checks"])
+    capped = draft(FakeClient.new(AiBudget::Exceeded.new("cap")))
+    assert_equal({ "tries" => [], "error" => "ai_cap" }, capped.payload["checks"])
+    assert_equal({ "tries" => [[]] }, draft(FakeClient.new(answer(GOOD))).payload["checks"])
+    _, _, codes = PlanDrafter.validate(answer(GOOD.first(2)).merge("x" => 1), PlanCandidates.call(@user, @user.financial_profile.answers), [], appetite: "trim")
+    assert_equal %w[extra_keys missing_category], codes
   end
 
   test "a refusal, an outage or the AI cap → the fallback at once (no retry); keep everything never trims" do
