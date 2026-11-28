@@ -13,7 +13,8 @@
 #   committed  kept bills (OB1 Bills.monthly_total) + dated saving goals'
 #              weekly need (G2) × 52 / 12 + each debt goal's monthly payment,
 #              unless a kept bill is in Debt Payments (never counted twice)
-#   room       income − committed;  fits = everyday budgets ≤ room
+#   room       income − committed;  fits = everyday budgets ≤ room;
+#              unplanned = room − everyday budgets when positive (D-034)
 #
 # Money is stored in the payload as two-decimal strings (as the API sends it).
 module PlanFigures
@@ -130,7 +131,8 @@ module PlanFigures
       "bills" => bills, "goals" => goals,
       "committed" => { "bills" => money_s(committed_bills), "goals" => money_s(committed_goals), "debt" => money_s(committed_debt), "total" => money_s(committed) },
       "room" => room && money_s(room), "everyday_total" => money_s(everyday),
-      "fits" => room && everyday <= room, "gap" => room && money_s([everyday - room, 0].max)
+      "fits" => room && everyday <= room, "gap" => room && money_s([everyday - room, 0].max),
+      "unplanned" => room && money_s([room - everyday, 0].max) # D-034: "Unplanned each month" on C6
     )
   end
 

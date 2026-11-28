@@ -261,6 +261,28 @@ The `biggest_trim_ok` follow-up is eligible only when the top everyday category'
 
 ---
 
+## D-033 — Plan fallback for "Push me a bit"
+
+**Status:** Approved (owner, 2026-11-28). Raised in the PL1 (plan drafting) review; spec amended (`SPEC_ONBOARDING_PLAN.md` §6.3).
+
+- When the model fails twice, refuses, is unavailable or the AI cap is reached, "Push me a bit" falls back like "Small trims": **trim the 2 largest non-essential categories that have a trim**. The fallback never gives less change than the user asked for; stretch stays model-only; "Keep things as they are" keeps everything.
+- **Unknown categories in the model's answer stay strict:** the check fails → one retry → fallback (not silently dropped).
+
+---
+
+## D-034 — Plan draft honesty and display (PL1 tone review)
+
+**Status:** Approved (owner, 2026-11-28). From the Planner's review of the PL1 sample draft on demo data; spec amended (`SPEC_ONBOARDING_PLAN.md` §4.1, §6.3, §6.5).
+
+1. **At least one change when asked:** for "Small trims" and "Push me a bit", at least one non-keep option whenever a non-essential category has a trim (still ≤ 3 trims). If no trim exists, the model is told so and the intro must not claim changes. (The sample kept everything while its intro said "Small changes only".)
+2. **Unplanned money and undated goals on C6:** show "Unplanned each month: $X" (Rails figure); undated goals show "No date set · add a date to get a weekly amount" with an Add a date action, never "$0.00 a month". (The sample left $1,690/month unplanned while two goals got $0.)
+3. **Tidy bill names at detection** (Title Case, common bank noise removed; raw merchant key kept for matching; editable). Built as a small separate fix PR.
+4. **Rounding unchanged** (keep rounds up to $5); C6 shows "Your usual" in whole dollars.
+
+**Where each lands:** 1 in PL1 before its PR (sample re-run); 3 as its own fix PR; 2 and 4 in C6.
+
+---
+
 ## Open questions register
 
 | # | Question | Phase | Status |

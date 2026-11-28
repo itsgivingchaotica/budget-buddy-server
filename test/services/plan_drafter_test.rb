@@ -118,6 +118,27 @@ class PlanDrafterTest < ActiveSupport::TestCase
     assert_includes PlanDrafter.validate(trims.(4), five, [], appetite: "trim").last, "at most 3 trims for small trims"
   end
 
+  test "D-034: small trims and push must change something when a non-essential trim exists; otherwise the model is told" do
+    all_keep = answer(GOOD.map { |slug, _, _| [slug, "keep", ""] })
+    %w[trim push].each do |appetite|
+      candidates = PlanCandidates.call(answers("change_appetite" => appetite), @user.financial_profile.answers)
+      assert_includes PlanDrafter.validate(all_keep, candidates, [], appetite:).last,
+                      "choose at least one trim or stretch: the user asked for small changes", appetite
+    end
+    keep = PlanCandidates.call(answers("change_appetite" => "keep"), @user.financial_profile.answers)
+    assert_empty PlanDrafter.validate(all_keep, keep, [], appetite: "keep").last, "keep things as they are: no change needed"
+
+    # Only groceries (essential, has a trim) and entertainment (no trim) left: no non-essential trim exists.
+    Transaction.where(category: [@dining, @clothing]).delete_all
+    answers("change_appetite" => "trim")
+    only = answer([["groceries", "keep", ""], ["entertainment", "keep", ""]], intro: "Your usual spending fits, so nothing needs to change.")
+    client = FakeClient.new(only)
+    proposal = draft(client)
+    assert_equal ["model", 1], [proposal.source, client.calls.size], "all keep is accepted when no non-essential trim exists"
+    assert_includes client.calls.first[:user], "No category can be trimmed this time"
+    assert_includes client.calls.first[:user], '"trims_available":false'
+  end
+
   test "one retry with the problems listed, then the deterministic fallback (§6.3)" do
     answers("change_appetite" => "trim")
     bad = answer(GOOD.first(3))

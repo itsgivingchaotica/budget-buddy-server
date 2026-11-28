@@ -1,6 +1,6 @@
 # Budget Buddy — Onboarding and plan drafting spec (ON1 onboarding questions, ON2 coach follow-ups, PL1 plan drafting, PL2 plan approval, C5 onboarding screens, C6 plan approval screen)
 
-**Status:** APPROVED by the product owner (2026-11-25), including the four §10 decisions. **Amended 2026-11-28 (owner approved):** §5 threshold (D-030), §6.2, §6.4, §7 (D-032). Milestone 2.
+**Status:** APPROVED by the product owner (2026-11-25), including the four §10 decisions. **Amended 2026-11-28 (owner approved):** §5 threshold (D-030), §6.2, §6.4, §7 (D-032); §6.3 fallback (D-033); §4.1, §6.3, §6.5 (D-034). Milestone 2.
 **Builds on:** D-002 (import → interview → coach drafts → user approves; small changes first; AI proposes, Rails calculates, user decides), D-010 (financial profile), D-019 (first run), D-021 (Left to spend), MVP_SCOPE P5–P7 and success criterion 1 (sign-up to approved plan in under 5 minutes), PO-4/PO-5/PO-14.
 **Visual source:** canvas page "Home & onboarding" (steps 1–4). Reference screenshots: `docs/product/screens/Onboard-*.png` (to be exported with this spec).
 **Depends on:** C2/C2b (accounts, import, review groups), AN1 (spending analytics), OB1 (bills), G1/G2 (goals and goal maths), DM-3 (category budgets).
@@ -42,7 +42,7 @@ The existing Activity flow (C2), shown inside onboarding with the step header an
 |---|---|
 | Pay pattern guess | From Income-category rows in the last 90 days on accounts with purpose `spending`/`bills`: the most common gap between deposits ≥ $200 → weekly (6–8 days), every 2 weeks (13–15), twice a month (two clusters per month), monthly (28–31); else irregular. Includes the last pay date. |
 | Side income | Monthly median of money in over the last 3 full months on accounts with purpose `side_income` (excluding confirmed transfers); shown only if ≥ $50. |
-| Likely bills | Fixed-category money out with the same merchant key in ≥ 2 of the last 3 full months, amounts within ±10%, day of month within ±3 → name (merchant display name, editable), typical amount (median), usual day, category. |
+| Likely bills | Fixed-category money out with the same merchant key in ≥ 2 of the last 3 full months, amounts within ±10%, day of month within ±3 → name, typical amount (median), usual day, category. **Name (D-034):** a tidied display name (Title Case; common bank noise removed: `.COM`, `USA`, `INC`, `PAYMENT`, `PMT`, trailing numbers and store IDs), editable; the raw merchant key is kept separately for matching. |
 | Usual spending | Per flexible category: median monthly spending over the last up to 6 full months (§6.1). |
 
 ### 4.2 The five questions
@@ -120,9 +120,10 @@ For each flexible category with spending in the period:
 - `reason` required for `trim`/`stretch`, optional for `keep`.
 - **No digits anywhere in model text.** Every figure on screen comes from Rails, so a made-up number can't appear. (Same principle as the coach's figure check, enforced more strictly.)
 - Appetite: "Keep things as they are" → all `keep` (the model isn't called for budgets; only the intro); "Small trims" → at most 3 trims, no stretch.
+- **At least one change (D-034):** for "Small trims" and "Push me a bit", at least one category must get a non-`keep` option whenever any non-essential category has a trim. If no trim exists, the model is told so, and the intro must not claim changes.
 - Text is checked for length and treated as plain text in the app (no markup).
 
-**On failure:** one retry with the validation errors; then a **deterministic fallback**: keep everything, except for "Small trims", trim the 2 largest non-essential categories; generic reasons from a fixed list. The draft records `source: "fallback"`, and the screen looks the same.
+**On failure:** one retry with the validation errors; then a **deterministic fallback**: keep everything, except for "Small trims" **and "Push me a bit"**, trim the 2 largest non-essential categories that have a trim (D-033: the fallback never gives less change than the user asked for; stretch stays model-only; "Keep things as they are" keeps everything); generic reasons from a fixed list. The draft records `source: "fallback"`, and the screen looks the same.
 
 **Model and cost:** `claude-haiku-5-5`, one call of roughly 1–2k tokens; checked against the daily AI cap; per-user limit of 5 drafts a day.
 
@@ -138,6 +139,9 @@ For each flexible category with spending in the period:
 - **Everyday budgets:** per category: name; "Your usual: $X" (+ the model's reason when trimmed); chosen amount; **Adjust** opens the −/+ sheet (as in the Plan tab), changing the draft only. "Show N more categories".
 - **Bills:** from step 3.
 - **Goals:** G2 figures, as on the canvas (weekly amount and first milestone; debt payoff time, interest, and the what-if).
+- **Unplanned each month (D-034):** "Unplanned each month: $X" (Rails: room − everyday total) under the fit line, when positive.
+- **Undated goals (D-034):** never "$0.00 a month"; show "No date set · add a date to get a weekly amount" with an **Add a date** action (PATCH the draft; G2 then computes the weekly amount).
+- **Usual spending** shown in whole dollars ("Your usual: $289").
 - **Fit line:** "Fits your usual income" or "This plan is **$X** a month over your usual income. You can adjust below." (Rails figures).
 - Footer: "Nothing is saved until you approve. Estimates assume a fixed APR and no new charges."
 - Buttons: **Adjust** (scrolls to budgets) and **Approve plan**.

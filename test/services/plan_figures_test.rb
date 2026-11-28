@@ -129,6 +129,7 @@ class PlanFiguresTest < ActiveSupport::TestCase
     assert_equal({ "bills" => "1565.00", "goals" => "288.90", "debt" => "120.00", "total" => "1973.90" }, result["committed"])
     # Room 3000 − 1973.90 = 1026.10; everyday 260 + 410 = 670 → fits, gap 0.
     assert_equal ["1026.10", "670.00", true, "0.00"], result.values_at("room", "everyday_total", "fits", "gap")
+    assert_equal "356.10", result["unplanned"], "D-034: 1026.10 − 670 left unplanned each month"
 
     # A kept Debt Payments bill of 120: the card's payment isn't counted again (total unchanged).
     with_bill = PlanFigures.compute(@user, payload(income: "3000.00", bills: bills + [bill("bill_2", "Card payment", "120.00", "debt-payments")], goals:), now: NOW)
@@ -136,7 +137,7 @@ class PlanFiguresTest < ActiveSupport::TestCase
 
     # Income 2000: room 26.10; 670 > 26.10 → doesn't fit by 643.90.
     tight = PlanFigures.compute(@user, payload(income: "2000.00", bills:, goals:), now: NOW)
-    assert_equal ["26.10", false, "643.90"], tight.values_at("room", "fits", "gap")
+    assert_equal ["26.10", false, "643.90", "0.00"], tight.values_at("room", "fits", "gap", "unplanned")
     # A bill switched off isn't committed.
     off = PlanFigures.compute(@user, payload(income: "3000.00", bills: [bills[0].merge("included" => false), bills[1]], goals:), now: NOW)
     assert_equal "65.00", off["committed"]["bills"]
