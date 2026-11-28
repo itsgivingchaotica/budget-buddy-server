@@ -215,41 +215,49 @@ Following advice from an experienced AI engineer: build scripts and deterministi
 - **Unbudgeted spending:** budget vs actual lists flexible categories with spending but no budget; the Plan tab shows them in a "No budget yet" group where tapping one sets a budget (`SCREENS_PLAN.md` §3).
 - **Other AN1 choices accepted:** "near" = 90% or more spent ($0 budget with spending = over); API range 366 days, service 24 months (coach); the context endpoint takes an optional `amount`; change percent to one decimal, omitted when the previous period had no spending.
 
+---
+
+## D-029 — Ambition level (project-build-workflow)
+
+**Status:** Approved (owner, recorded by the Builder 2026-11-27).
+
+**L0 (portfolio / learning), designed for L1 (private beta).** Synthetic demo data only; build what L0 needs, and make hard-to-reverse choices (money as decimal, time in UTC shown in the user's zone, user-owned data, hosted auth) so a move to L1 doesn't need a rewrite. Recorded as D-029 because D-001 was already taken.
 
 ---
 
-## D-029 — Ambition level (L0, designed for L1)
+## D-030 — Trim follow-up threshold (ON2)
 
-**Status:** Approved (owner, 2026-11-27). Adopted with the project-build-workflow (its "D-001 = ambition level"; D-001 is taken here, so this is the next free number).
+**Status:** Approved (owner, 2026-11-28). Decision issue: server #38.
 
-**Level: L0 Portfolio / learning.** The owner and reviewers use it; **synthetic demo data only** (DB0, the `demo:*` tasks, "synthetic data only" in every eval). One host, hosted auth (Kinde), managed Postgres on a free or hobby tier. Must-haves at L0: clean repos, tests, CI, demo data and a demo script, as-built architecture, evals for AI features, a visible GitHub trail.
-
-**Designed for L1 (private beta, real bank CSVs from fewer than 100 invited people).** The hard-to-reverse choices already fit L1: user-owned records with ownership checks on every query, money as `decimal(12,2)`, dates from the user's own time zone (`UserClock`), Kinde sign-in, a daily AI cost cap, no financial text in logs. Moving to L1 adds tasks rather than rewrites: error tracking, an uptime check, backups with a restore test, a staging database, a privacy note, data export and delete, secrets management.
-
-| Option | Who and what data | What it would still need | Chosen |
-|---|---|---|---|
-| **L0 Portfolio / learning** | Owner + reviewers; synthetic data | README with as-built facts and a demo script (both in M2) | **Yes** |
-| L1 Private beta | Up to ~100 invited; real bank CSVs | Error tracking, uptime, backups + restore test, staging DB, privacy note, data export/delete, secrets management | Next level up (design target) |
-| L2 Public launch | Anyone, app stores | L1 + privacy policy and terms, store listings, staging + prod, point-in-time recovery, support, incident checklist, accessibility pass | No |
-
+The `biggest_trim_ok` follow-up is eligible only when the top everyday category's usual spending is **≥ 120%** of its lowest recent month.
 
 ---
 
-## D-030 — Trim follow-up threshold: "well above its 3-month low" = 120%
+## D-031 — Onboarding as built (ON1, ON2, C5)
 
-**Status:** Proposed (Claude Code, 2026-11-27) · for the Planner and the owner to confirm. Built into ON2 (coach follow-ups, #23) so it can be tested; changing it is a one-line constant (`Onboarding::FollowUps::TRIM_RATIO`).
+**Status:** Approved (owner, 2026-11-27/28). Merged: server #33, #35; client #29, #32.
 
-**Context.** SPEC_ONBOARDING_PLAN §5 lets the coach ask `biggest_trim_ok` ("Is trimming your biggest everyday category OK?") when the change appetite isn't "keep" **and** "a category's usual is well above its 3-month low", without a number.
+- **C5:** tapping an earlier answer bubble reopens that question; the bills checklist always lists every detected bill, with removed ones unticked (owner's option 2).
+- **ON2 failures:** a successful follow-up result (even "none") is stored; a failure (refusal, outage, AI cap) is **not stored** and is retried next time. Onboarding never blocks on AI.
+- **ON2 client:** earlier answers aren't tappable during the follow-ups (accepted; a "change earlier answers" link is client #36, M3).
+- **Prefill:** comes from `GET /onboarding` (`questions[].prefill`), as SPEC_ONBOARDING_PLAN §4 describes; the issue text naming `/onboarding/context` was wrong.
+- **Spec-order and scope choices accepted** (ON1 report): pay question first; no free-text boxes; no week-start or time-zone questions; date chips instead of a date picker (with a "No date" option for undated goals).
+- **K-1 (CI test timeout):** Jest limit raised to 20 s on CI; onboarding tests wait for each step (client #34).
 
-**Proposal.** The top flexible category (largest usual, i.e. median monthly spending over up to 6 covered full months) qualifies when its usual is **at least 120%** of its lowest month among the last 3 full months the data covers, with at least 2 such months. Example: usual $300, lowest month $200 → 150% → qualifies; lowest $260 → 115% → doesn't.
+---
 
-| Option | Effect | Recommendation |
-|---|---|---|
-| **A. 120%** | Asks when there's a clearly cheaper recent month (about a fifth below usual) | **Proposed** (Claude): gentle, matches "small trims" (trim = 10% below usual) |
-| B. 110% | Asks more often, including small dips | More questions, some not worth asking |
-| C. 150% | Asks only after a much cheaper month | Rarely asked |
+## D-032 — Plan drafting and approval details (PL1, PL2, C6)
 
-**Owner decision:** ___ (date)
+**Status:** Approved (owner, 2026-11-28). Raised by the Builder before PL1; spec amended (`SPEC_ONBOARDING_PLAN.md` §6.2, §6.4, §7).
+
+1. **Income:** data median, unless the user changed the paycheck amount in question 1 (then amount × paychecks per month, same monthly-average function as bills).
+2. **Irregular pay without a stated floor:** the **lowest** of the last 3 full months ("Based on your lowest recent month"), not the median.
+3. **Debt payment:** counted as committed unless a kept bill is in Debt Payments.
+4. **Existing rows at approval:** this month's budgets replaced only for categories in the draft; duplicate-named bills and goals skipped and listed in the response.
+5. **Rent from "Add it":** median Rent spending of the last 3 full months, on the usual day, labelled "from your spending", editable.
+6. **Goal order:** the user's order wins; the model's only when they didn't answer.
+7. **Statuses:** `draft` / `approved` / `superseded`, stale computed on read; a second approve → 409 `already_approved`, treated as success by the app.
+8. **Three PRs:** PL1 #24 → PL2 #25 → C6 #20.
 
 ---
 
