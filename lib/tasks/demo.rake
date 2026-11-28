@@ -8,6 +8,8 @@
 #   bin/rails "demo:home_state[normal]" [USER_EMAIL=…]   no_plan | normal | over, for Home screenshots
 #   bin/rails "demo:onboarding_state[interview]" [USER_EMAIL=…]   accounts | interview | merchants | plan, no answers
 #   bin/rails demo:sample_plan [USER_EMAIL=…]   a stand-in plan (budgets, bills, a goal) for checking Home/Plan
+#   bin/rails demo:plan_draft [USER_EMAIL=…]    PL1: build a coach draft through the real pipeline (one Claude call,
+#                                  or the fallback) and print its figures and text, for the tone review
 #                                  ...or into an existing (signed-in) user, so the app shows them
 #
 # SEED and END_ON (YYYY-MM-DD) change the data; the defaults are fixed, so
@@ -78,5 +80,24 @@ namespace :demo do
     puts "Added for user ##{user.id}: #{Demo::SamplePlan.call(user:)}"
   rescue Demo::SamplePlan::Refused => e
     abort e.message
+  end
+
+  desc "PL1: build a coach draft plan for the demo user (or USER_EMAIL) and print it (development only; one real Claude call)"
+  task plan_draft: :environment do
+    abort "demo:plan_draft runs only in development (this is #{Rails.env})" unless Rails.env.development?
+    email = ENV["USER_EMAIL"].presence || Demo::Reset::DEMO_EMAIL
+    user = User.find_by_email_ci(email) || abort("No user with that email. Sign in once in the app (or run demo:seed) first.")
+    abort "Answer the onboarding questions first (demo:onboarding_state[interview], then the app)." if user.financial_profile&.answers.blank?
+
+    p = PlanDrafter.call(user).payload
+    puts "Draft (#{PlanProposal.where(user:).order(:id).last.source}), built from #{p['months']} months, appetite #{p['appetite']}"
+    puts "Intro: #{p['intro']}"
+    p["categories"].each do |c|
+      puts format("  %-18s usual $%9s → %-7s $%9s  %s", c["name"], c["usual"], c["option"], c["amount"], c["reason"])
+    end
+    p["bills"].each { |b| puts format("  bill  %-18s $%9s a month%s", b["name"], b["monthly"], b["from_spending"] ? " (from your spending)" : "") }
+    p["goals"].each { |g| puts format("  goal  %-18s $%9s a month", g["name"].presence || g["kind"], g["monthly_commitment"]) }
+    puts "Income $#{p.dig('income', 'monthly')} (#{p.dig('income', 'label')}) · committed $#{p.dig('committed', 'total')} · " \
+         "room $#{p['room']} · everyday $#{p['everyday_total']} · #{p['fits'] ? 'fits' : "over by $#{p['gap']}"}"
   end
 end

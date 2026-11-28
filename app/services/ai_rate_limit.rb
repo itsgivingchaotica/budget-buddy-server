@@ -6,11 +6,13 @@
 # authentication and trust an unverified user id, letting anyone use up
 # someone else's limit.)
 #
-# Fixed one-hour windows in an in-process memory store: fine for one
+# Fixed windows (one hour for categorize; one day for plan drafts, PL1 and
+# SPEC_ONBOARDING_PLAN §6.3) in an in-process memory store: fine for one
 # server; several servers would need a shared store (Redis or similar).
 module AiRateLimit
-  LIMITS = { categorize: 20 }.freeze # requests per hour
-  WINDOW = 1.hour
+  LIMITS = { categorize: 20, plan: 5 }.freeze # requests per window
+  WINDOWS = { categorize: 1.hour, plan: 1.day }.freeze
+  WINDOW = 1.hour # the default window
 
   class Limited < StandardError
     attr_reader :retry_after
@@ -31,10 +33,11 @@ module AiRateLimit
 
   def hit!(user, feature, now: Time.now)
     limit = LIMITS.fetch(feature)
-    window = now.to_i / WINDOW.to_i
-    count = store.increment("ai:#{user.id}:#{feature}:#{window}", 1, expires_in: WINDOW * 2)
+    length = WINDOWS.fetch(feature, WINDOW).to_i
+    window = now.to_i / length
+    count = store.increment("ai:#{user.id}:#{feature}:#{window}", 1, expires_in: length * 2)
     return count if count <= limit
 
-    raise Limited, ((window + 1) * WINDOW.to_i) - now.to_i
+    raise Limited, ((window + 1) * length) - now.to_i
   end
 end

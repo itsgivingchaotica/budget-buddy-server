@@ -19,6 +19,8 @@ class User < ApplicationRecord
   has_many :obligations
   # G1: goals (archived, never deleted).
   has_many :goals
+  # PL1: coach draft plans (at most one open draft).
+  has_many :plan_proposals
 
   # Users created from a Kinde identity (S2) take names and email from Kinde,
   # which may not provide them; legacy users still need all three.
