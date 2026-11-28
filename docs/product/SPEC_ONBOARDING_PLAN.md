@@ -1,6 +1,6 @@
 # Budget Buddy — Onboarding and plan drafting spec (ON1 onboarding questions, ON2 coach follow-ups, PL1 plan drafting, PL2 plan approval, C5 onboarding screens, C6 plan approval screen)
 
-**Status:** APPROVED by the product owner (2026-11-25), including the four §10 decisions. **Amended 2026-11-28 (owner approved):** §5 threshold (D-030), §6.2, §6.4, §7 (D-032); §6.3 fallback (D-033); §4.1, §6.3, §6.5 (D-034). Milestone 2.
+**Status:** APPROVED by the product owner (2026-11-25), including the four §10 decisions. **Amended 2026-11-28 (owner approved):** §5 threshold (D-030), §6.2, §6.4, §7 (D-032); §6.3 fallback (D-033); §4.1, §6.3, §6.5 (D-034); §6.3 intro length and request limits (D-035). Milestone 2.
 **Builds on:** D-002 (import → interview → coach drafts → user approves; small changes first; AI proposes, Rails calculates, user decides), D-010 (financial profile), D-019 (first run), D-021 (Left to spend), MVP_SCOPE P5–P7 and success criterion 1 (sign-up to approved plan in under 5 minutes), PO-4/PO-5/PO-14.
 **Visual source:** canvas page "Home & onboarding" (steps 1–4). Reference screenshots: `docs/product/screens/Onboard-*.png` (to be exported with this spec).
 **Depends on:** C2/C2b (accounts, import, review groups), AN1 (spending analytics), OB1 (bills), G1/G2 (goals and goal maths), DM-3 (category budgets).
@@ -105,7 +105,7 @@ For each flexible category with spending in the period:
 **Output schema:**
 ```json
 {
-  "intro": "<≤ 200 chars, no digits>",
+  "intro": "<≤ 240 chars (aim ~180), no digits>",
   "budgets": [
     { "category_slug": "dining-out", "option": "trim", "reason": "<≤ 80 chars, no digits>" }
   ],
@@ -118,6 +118,7 @@ For each flexible category with spending in the period:
 **Rules Rails enforces:**
 - Every candidate category appears **exactly once**; `option` must be one that exists for it.
 - `reason` required for `trim`/`stretch`, optional for `keep`.
+- **Intro length (D-035):** at most **240 characters** (raised from 200); the request asks the model to aim for about 180. **Every validated limit is stated in the request** (the list of categories it must return, max trims, at least one change, intro and reason lengths, no digits), so the model isn't left to guess them.
 - **No digits anywhere in model text.** Every figure on screen comes from Rails, so a made-up number can't appear. (Same principle as the coach's figure check, enforced more strictly.)
 - Appetite: "Keep things as they are" → all `keep` (the model isn't called for budgets; only the intro); "Small trims" → at most 3 trims, no stretch.
 - **At least one change (D-034):** for "Small trims" and "Push me a bit", at least one category must get a non-`keep` option whenever any non-essential category has a trim. If no trim exists, the model is told so, and the intro must not claim changes.

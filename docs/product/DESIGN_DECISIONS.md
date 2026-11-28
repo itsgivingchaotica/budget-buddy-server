@@ -284,6 +284,17 @@ The `biggest_trim_ok` follow-up is eligible only when the top everyday category'
 
 ---
 
+## D-035 — Plan intro length and limits in the request (PL1 reliability)
+
+**Status:** Approved (owner, 2026-11-28; the 240-character limit approved in advance, the 180 target on the evidence). Eval: `bb-server/docs/evals/plan-drafting-2026-11-28.md`. Spec amended (`SPEC_ONBOARDING_PLAN.md` §6.3).
+
+- **Evidence:** two 10-draft runs on demo data, **0/20 fallbacks**. With intro ≤ 200: 8 passed first try, 2 after the retry (both intro too long). With ≤ 240: 5 first try, 5 after the retry (missing category ×3, intro too long ×2): the model simply wrote longer intros (mean 174 → 214 characters).
+- **Decision:** keep the hard limit at **240 characters**, and ask the model to **aim for about 180** (soft target well below the cap). **State every validated limit in the request**, including the exact list of categories to return, which targets the missing-category retries.
+- **Tracked metrics:** fallback rate (target < 10%) and first-try pass rate, reported in `docs/evals/` for each change to the drafting prompt.
+- **Lesson worth keeping:** loosening a limit didn't improve reliability; telling the model the limits and giving it a target below the cap is the lever.
+
+---
+
 ## Open questions register
 
 | # | Question | Phase | Status |

@@ -162,8 +162,9 @@ class PlanDrafterTest < ActiveSupport::TestCase
       request = JSON.parse(client.calls.first[:user][/\{.*\}/])
       assert_equal [left_over, no_date], request.values_at("money_left_over_each_month", "goals_without_a_date"), extra.inspect
       assert_not_includes client.calls.first[:user], "Bike"
+      assert_equal [%w[groceries dining-out entertainment clothing], 4], request.values_at("required_categories", "required_category_count")
       assert_equal({ "each_category_exactly_once" => true, "max_trims" => 3, "stretch_allowed" => false, "at_least_one_change" => true,
-                     "intro_max_characters" => 240, "reason_max_characters" => 80, "reason_required_for" => %w[trim stretch],
+                     "intro_max_characters" => 240, "intro_target_characters" => 180, "reason_max_characters" => 80, "reason_required_for" => %w[trim stretch],
                      "digits_allowed" => false }, request["limits"], "every limit Rails checks is in the request")
     end
     nudge = "You'll have room left each month. Give your goals a date and I'll turn it into a weekly amount."

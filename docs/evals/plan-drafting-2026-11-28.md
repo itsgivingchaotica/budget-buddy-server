@@ -1,6 +1,6 @@
 # Plan drafting eval (PL1): 2026-11-28
 
-**Status:** Eval report (Builder, 2026-11-28) · two runs of `bin/rails "eval:plan_drafting[10]"`, before and after D-035 (intro limit 240 characters)
+**Status:** Eval report (Builder, 2026-11-28) · three runs of `bin/rails "eval:plan_drafting[10]"`: before D-035 (intro limit 240 characters), after it, and with an intro target and the required categories listed
 
 Why: 2 of the first 4 sample drafts after D-034 item 5 fell back. The owner asked for every validated limit to be stated in the model request, the failed checks to be recorded as generic codes in each draft, and 10 drafts measured (target: fallback < 10%); if intro length was a cause, the intro limit goes to 240 characters (D-035, approved in advance).
 
@@ -60,11 +60,44 @@ Why: 2 of the first 4 sample drafts after D-034 item 5 fell back. The owner aske
 - Intro length: 175–239 characters (mean 214).
 - Categories changed (trim or stretch) per draft: 1 in 1, 2 in 6, 3 in 3.
 
+## Run C: intro ≤ 240, aim for about 180; required categories listed
+
+The request also says to aim for about 180 characters (owner, 2026-11-28; the hard limit stays 240) and lists every category the answer must contain, and how many.
+
+- **Run:** 2026-11-28T05:07:43Z · model `claude-haiku-5-5` · real `PlanDrafter` (one call, Rails' checks, one retry, then the fallback), daily AI cap in place · 10 drafts.
+- **Claude usage:** 10 requests, 17890 input + 8273 output tokens, about $0.0059 at list price.
+
+### Headline
+
+| | Drafts | Share |
+|---|---|---|
+| **Fallback** (target < 10%) | **0** | **0%** |
+| Model's answer passed on the first try | 10 | 100% |
+| Passed after the one retry | 0 | 0% |
+
+**Result:** meets the target.
+
+### Failed checks (generic codes, every try)
+
+None: every try passed.
+
+### The model's drafts
+
+- Intro length: 158–229 characters (mean 196).
+- Categories changed (trim or stretch) per draft: 2 in 7, 3 in 3.
+
 ## Reading the results
 
-- **Fallback rate: 0 of 20 drafts in both runs**, well under the 10% target. Stating every limit in the request did the main work: before it, 2 of 4 sample drafts fell back.
-- **Intro length was the only failed check in run A** (2 of 12 tries), so D-035 raised the limit to 240. In run B the model **used the extra room**: intros grew from a mean of 174 to 214 characters, and 2 tries still ran over. Retries went up (2 → 5 drafts needed one), partly from `missing_category` (a category left out), which run A didn't show.
-- Each run is only 10 drafts, so the change in retries may be chance. Neither run fell back.
+| | Run A (≤ 200) | Run B (≤ 240) | Run C (≤ 240, aim 180, categories listed) |
+|---|---|---|---|
+| **Fallback** (target < 10%) | **0 / 10** | **0 / 10** | **0 / 10** |
+| **Passed on the first try** | 8 / 10 | 5 / 10 | **10 / 10** |
+| Failed checks | `intro_too_long` 2 | `missing_category` 3, `intro_too_long` 2 | none |
+| Intro length (mean) | 174 | 214 | 196 |
+
+- **Fallback rate: 0 of 30 drafts**, well under the 10% target. Stating every limit in the request did the main work: before it, 2 of 4 sample drafts fell back.
+- **D-035 alone (run B)** let the model write longer intros (mean 174 → 214) without removing `intro_too_long`, and retries went up. **Run C** (aim for about 180, hard limit 240, and the required categories listed by name and count) passed every draft on the first try: no `intro_too_long`, no `missing_category`.
+- Each run is only 10 drafts, so the differences between runs may partly be chance; none of the 30 fell back.
 
 ## Limitations
 
