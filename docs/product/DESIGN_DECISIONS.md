@@ -237,7 +237,7 @@ Following advice from an experienced AI engineer: build scripts and deterministi
 
 ## D-030 — Trim follow-up threshold: "well above its 3-month low" = 120%
 
-**Status:** Proposed (Claude Code, 2026-11-27) · for the Planner and the owner to confirm. Built into ON2 (coach follow-ups, #23) so it can be tested; changing it is a one-line constant (`Onboarding::FollowUps::TRIM_RATIO`).
+**Status:** Approved (owner, 2026-11-28). Proposed by Claude Code (2026-11-27); confirmed in the Planner chat. Built into ON2 (coach follow-up questions, #23) as `Onboarding::FollowUps::TRIM_RATIO = 1.2`; no code change needed.
 
 **Context.** SPEC_ONBOARDING_PLAN §5 lets the coach ask `biggest_trim_ok` ("Is trimming your biggest everyday category OK?") when the change appetite isn't "keep" **and** "a category's usual is well above its 3-month low", without a number.
 
@@ -245,11 +245,11 @@ Following advice from an experienced AI engineer: build scripts and deterministi
 
 | Option | Effect | Recommendation |
 |---|---|---|
-| **A. 120%** | Asks when there's a clearly cheaper recent month (about a fifth below usual) | **Proposed** (Claude): gentle, matches "small trims" (trim = 10% below usual) |
+| **A. 120%** | Asks when there's a clearly cheaper recent month (about a fifth below usual) | **Chosen** (owner, 2026-11-28); proposed by Claude: gentle, matches "small trims" (trim = 10% below usual) |
 | B. 110% | Asks more often, including small dips | More questions, some not worth asking |
 | C. 150% | Asks only after a much cheaper month | Rarely asked |
 
-**Owner decision:** ___ (date)
+**Owner decision:** **A. 120%** (owner, 2026-11-28). The biggest-trim follow-up is asked only when the usual spend is at least 120% of the lowest recent month.
 
 ---
 

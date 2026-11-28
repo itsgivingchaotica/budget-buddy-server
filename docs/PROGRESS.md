@@ -1433,4 +1433,8 @@ So the phone was already signed out of Kinde locally, while the app kept its use
 
 - Workflow skill Phase 3 step 9, "Issue checklists: the Builder keeps them current" and "Owner action needed" sections, report item 7 (copied from the starter, which is the master copy); the same ground rule in both `CLAUDE.md` files. Branch `chore/checklist-rule` in each repo (server #36, client #35).
 - Catch-up: boxes ticked with proof comments on server #23 and client #31 (ON2) and client #19 (C5); the open M2 issues are unstarted, so nothing on them is true yet.
-- Owner (2026-11-28): the ON2 client box "earlier answers can still be tapped" accepted as is; the "change earlier answers" link during the follow-ups is client #36 (M3). D-030 (trim follow-up threshold) to be settled in the Planner chat.
+- Owner (2026-11-28): the ON2 client box "earlier answers can still be tapped" accepted as is; the "change earlier answers" link during the follow-ups is client #36 (M3). D-030 (trim follow-up threshold) settled below.
+
+### D-030 (trim follow-up threshold) — approved (owner, 2026-11-28)
+
+- The owner chose **120%** in the Planner chat (options 110 / 120 / 150%): the biggest-trim follow-up is asked only when the top everyday category's usual spend is at least 120% of its lowest recent month. Already built that way in ON2 (`TRIM_RATIO = 1.2`); docs only.
